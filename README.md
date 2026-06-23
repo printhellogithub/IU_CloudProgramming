@@ -4,6 +4,6 @@ This is a repo with the purpose of studying Cloud Programming. The goal is to bu
 ____
 Dieses Repo dient dem Studieren von Cloud-Programmierung. Ziel ist der Aufbau einer automatisch skalierenden Cloud-Infrastruktur, die eine einfache statische Website hostet, welche weltweit mit geringer Latenz erreichbar ist. Die Infrastruktur wird mit Terraform implementiert.
 
-Dieses Programm ist im Rahmen des Studiums *Angewandte Künstliche Intelligenz* an der IU Internationalen Hochschule entstanden. Es wurde im Kurs "Cloud Programming" von Florian Erik Janssens entworfen und programmiert. Das Dashboard-Programm dient ausschließlich Lernzwecken.
+Dieses Programm ist im Rahmen des Studiums *Angewandte Künstliche Intelligenz* an der IU Internationalen Hochschule entstanden. Es wurde im Kurs "Cloud Programming" von Florian Erik Janssens entworfen und programmiert. Das Programm dient ausschließlich Lernzwecken.
 
 GitHub-Repository: https://github.com/printhellogithub/IU_CloudProgramming
