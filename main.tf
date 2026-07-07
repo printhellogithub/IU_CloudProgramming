@@ -238,6 +238,42 @@ resource "aws_route53_record" "cloudfront" {
 # ----------------------------------------------------------------
 # S3 BUCKET FOR LOGGING (Cloudfront)
 
+resource "aws_cloudwatch_log_delivery_source" "cactify_distribution" {
+  region = "us-east-1"
+
+  name         = "cactify_distribution"
+  log_type     = "ACCESS_LOGS"
+  resource_arn = aws_cloudfront_distribution.cactify_distribution.arn
+}
+
+resource "aws_s3_bucket" "cactify-logging" {
+  bucket        = "cactify-logging-bucket"
+  force_destroy = true
+}
+
+resource "aws_cloudwatch_log_delivery_destination" "cactify_distribution" {
+  region = "us-east-1"
+
+  name          = "s3-destination"
+  output_format = "parquet"
+
+  delivery_destination_configuration {
+    destination_resource_arn = "${aws_s3_bucket.cactify-logging.arn}/prefix"
+  }
+}
+
+resource "aws_cloudwatch_log_delivery" "cactify_distribution" {
+  region = "us-east-1"
+
+  delivery_source_name     = aws_cloudwatch_log_delivery_source.cactify_distribution.name
+  delivery_destination_arn = aws_cloudwatch_log_delivery_destination.cactify_distribution.arn
+
+  s3_delivery_configuration {
+    # suffix_path = "/123456678910/{DistributionId}/{yyyy}/{MM}/{dd}/{HH}"
+    suffix_path = format("/%s/%s/{yyyy}/{MM}/{dd}/{HH}", data.aws_caller_identity.current.account_id, aws_cloudfront_distribution.cactify_distribution.id)
+  }
+}
+
 # resource "aws_s3_bucket" "logging" {
 #   bucket = "cactify-logging-bucket"
 # }
@@ -268,7 +304,17 @@ resource "aws_route53_record" "cloudfront" {
 
 
 # ROUTE 53
+resource "aws_route53_zone" "primary" {
+  name = "florianjanssens.de"
+}
 
+
+import {
+  to = aws_route53_zone.myzone
+  identity = {
+    zone_id = "Z1D633PJN98FT9"
+  }
+}
 
 # API-GATEWAY
 
