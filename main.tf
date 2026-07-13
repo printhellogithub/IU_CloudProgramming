@@ -1,33 +1,28 @@
+# PROVIDER
 provider "aws" {
   region = "us-east-1"
 }
 
-# S3 BUCKET WEBSITE CONTENTS
-# deprecated version
+# LOCALS
+locals {
+  s3_origin_id   = aws_s3_bucket.cactify-website-content.id
+  cactify_domain = "cactify.florianjanssens.de"
+  main_domain    = "florianjanssens.de"
+  hosted_zone_id = "Z06874663LA9REHRJ0CLV"
+}
 
-# module "s3_bucket" {
-#   source = "terraform-aws-modules/s3-bucket/aws"
-
-#   bucket = "cactify-website-content"
-#   acl    = "private"
-
-#   control_object_ownership = true
-#   object_ownership         = "ObjectWriter"
-
-#   versioning = {
-#     enabled = true
-#   }
-
-#   tags = {
-#     Name = var.s3_bucket_name
-#   }
-# }
-
-# ----------------------------------------------------------------
-# S3 BUCKET WEBSITE CONTENTS
+# DATENQUELLEN
 data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
 
+data "aws_route53_zone" "cactify_domain" {
+  name    = local.main_domain
+  zone_id = local.hosted_zone_id
+}
+
+# S3 BUCKET WEBSITE CONTENTS
+# ----------------------------------------------------------------
+# S3 Bucket 
 resource "aws_s3_bucket" "cactify-website-content" {
   bucket           = format("cactify-website-content-%s-%s-an", data.aws_caller_identity.current.account_id, data.aws_region.current.region)
   bucket_namespace = "account-regional"
@@ -36,31 +31,41 @@ resource "aws_s3_bucket" "cactify-website-content" {
     Name = var.s3_bucket_name
   }
 }
-
+# S3 Bucket Ownership Controls
 resource "aws_s3_bucket_ownership_controls" "cactify-website-content" {
   bucket = aws_s3_bucket.cactify-website-content.id
   rule {
     object_ownership = "BucketOwnerPreferred"
   }
 }
-
+# S3 Bucket ACL (Access Controll Lists)
 resource "aws_s3_bucket_acl" "cactify-website-content" {
   depends_on = [aws_s3_bucket_ownership_controls.cactify-website-content]
 
   bucket = aws_s3_bucket.cactify-website-content.id
   acl    = "private"
 }
-
+# S3 Bucket Versioning
 resource "aws_s3_bucket_versioning" "cactify-website-content" {
   bucket = aws_s3_bucket.cactify-website-content.id
   versioning_configuration {
     status = "Enabled"
   }
 }
-
-# ----------------------------------------------------------------
-# S3 Bucket-Policy (Cloudfront Access)
-data "aws_iam_policy_document" "PolicyForCloudFrontPrivateContent" {
+# S3 Cloudfront Origin Bucket Policy
+resource "aws_s3_bucket_policy" "origin_bucket_policy" {
+  bucket = aws_s3_bucket.cactify-website-content.id
+  policy = data.aws_iam_policy_document.origin_bucket_policy.json
+}
+# Cloudfront Origin Access Control
+resource "aws_cloudfront_origin_access_control" "default" {
+  name                              = "default-oac"
+  origin_access_control_origin_type = "s3"
+  signing_behavior                  = "always"
+  signing_protocol                  = "sigv4"
+}
+# S3 IAM Bucket-Policy (Cloudfront Access)
+data "aws_iam_policy_document" "origin_bucket_policy" {
   statement {
     # falls buggy, versuche "AllowCloudFrontServicePrincipalReadWrite"
     sid    = "AllowCloudFrontServicePrincipal"
@@ -88,30 +93,39 @@ data "aws_iam_policy_document" "PolicyForCloudFrontPrivateContent" {
   }
 }
 
+# ACM (Certificate Manager) + DNS-Validierung
 # ----------------------------------------------------------------
-# S3 Cloudfront Origin Bucket Policy
-resource "aws_s3_bucket_policy" "origin_bucket_policy" {
-  bucket = aws_s3_bucket.cactify-website-content
-  policy = data.aws_iam_policy_document.origin_bucket_policy.json
+resource "aws_acm_certificate" "cactify_cf" {
+  provider                  = aws
+  domain_name               = local.cactify_domain
+  subject_alternative_names = ["www.${local.cactify_domain}"]
+  validation_method         = "DNS"
+  # validation_option {
+  #   domain_name       = "cactify.florianjanssens.de"
+  #   validation_domain = "florianjanssens.de"
+  # }
 }
+# DNS-Einträge für Certificate Validierung
+resource "aws_route53_record" "acm_records" {
+  for_each = {
+    for dvo in aws_acm_certificate.cactify_cf.domain_validation_options : dvo.domain_name => {
+      name   = dvo.resource_record_name
+      record = dvo.resource_record_value
+      type   = dvo.resource_record_type
+    }
+  }
 
-locals {
-  s3_origin_id   = aws_s3_bucket.cactify-website-content.id
-  cactify_domain = "cactify.florianjanssens.com"
-  main_domain    = "florianjanssens.de"
+  allow_overwrite = true
+  name            = each.value.name
+  records         = [each.value.record]
+  ttl             = 60
+  type            = each.value.type
+  zone_id         = data.aws_route53_zone.cactify_domain.zone_id
 }
-
-data "aws_acm_certificate" "florianjanssens_domain" {
-  region   = "us-east-1"
-  domain   = "*.${local.main_domain}"
-  statuses = ["ISSUED"]
-}
-
-resource "aws_cloudfront_origin_access_control" "default" {
-  name                              = "default-oac"
-  origin_access_control_origin_type = "s3"
-  signing_behavior                  = "always"
-  signing_protocol                  = "sigv4"
+# ACM Certificate Validation
+resource "aws_acm_certificate_validation" "cactify_cf" {
+  certificate_arn         = aws_acm_certificate.cactify_cf.arn
+  validation_record_fqdns = [for record in aws_route53_record.acm_records : record.fqdn]
 }
 
 # ----------------------------------------------------------------
@@ -210,20 +224,18 @@ resource "aws_cloudfront_distribution" "cactify_distribution" {
   }
 
   viewer_certificate {
-    acm_certificate_arn = data.aws_acm_certificate.main_domain.arn
+    acm_certificate_arn = aws_acm_certificate_validation.cactify_cf.certificate_arn
     ssl_support_method  = "sni-only"
   }
 }
+# ----------------------------------------------------------------
+# Cloudfront Distribution Ende
+# ----------------------------------------------------------------
 
-# Create Route53 records for the CloudFront distribution aliases
-data "aws_route53_zone" "cactify_domain" {
-  name    = local.main_domain
-  zone_id = "Z06874663LA9REHRJ0CLV"
-}
-
+# DNS-Einträge für CloudFront-Distribution (aliases)
 resource "aws_route53_record" "cloudfront" {
-  for_each = aws_cloudfront_distribution.cactify_distribution.aliases
-  zone_id  = data.aws_route53_zone.local.main_domain.zone_id
+  for_each = toset(aws_cloudfront_distribution.cactify_distribution.aliases)
+  zone_id  = data.aws_route53_zone.cactify_domain.zone_id
   name     = each.value
   type     = "A"
 
@@ -235,13 +247,13 @@ resource "aws_route53_record" "cloudfront" {
 }
 # AAAA-Eintrag?
 # AWS-SES Einträge? TXT, MX, CNAMES?
-
-# ----------------------------------------------------------------
 # ----------------------------------------------------------------
 
+# LOGGING
 # ----------------------------------------------------------------
-# S3 BUCKET FOR LOGGING (Cloudfront)
+# 1. CloudFront Logging
 
+# Cloudwatch Log Delivery Source
 resource "aws_cloudwatch_log_delivery_source" "cactify_distribution" {
   region = "us-east-1"
 
@@ -249,12 +261,12 @@ resource "aws_cloudwatch_log_delivery_source" "cactify_distribution" {
   log_type     = "ACCESS_LOGS"
   resource_arn = aws_cloudfront_distribution.cactify_distribution.arn
 }
-
+# S3 Log Bucket
 resource "aws_s3_bucket" "cactify-logging" {
   bucket        = "cactify-logging-bucket"
   force_destroy = true
 }
-
+# Log Delivery Destination
 resource "aws_cloudwatch_log_delivery_destination" "cactify_distribution" {
   region = "us-east-1"
 
@@ -265,7 +277,7 @@ resource "aws_cloudwatch_log_delivery_destination" "cactify_distribution" {
     destination_resource_arn = "${aws_s3_bucket.cactify-logging.arn}/prefix"
   }
 }
-
+# Log Delivery
 resource "aws_cloudwatch_log_delivery" "cactify_distribution" {
   region = "us-east-1"
 
@@ -277,33 +289,7 @@ resource "aws_cloudwatch_log_delivery" "cactify_distribution" {
     suffix_path = format("/%s/%s/{yyyy}/{MM}/{dd}/{HH}", data.aws_caller_identity.current.account_id, aws_cloudfront_distribution.cactify_distribution.id)
   }
 }
-
-# resource "aws_s3_bucket" "logging" {
-#   bucket = "cactify-logging-bucket"
-# }
-
-# data "aws_iam_policy_document" "logging_bucket_policy" {
-#   statement {
-#     principals {
-#       identifiers = ["logging.s3.amazonaws.com"]
-#       type        = "Service"
-#     }
-#     actions   = ["s3:PutObject"]
-#     resources = ["${aws_s3_bucket.logging.arn}/*"]
-#     condition {
-#       test     = "StringEquals"
-#       variable = "aws:SourceAccount"
-#       values   = [data.aws_caller_identity.current.account_id]
-#     }
-#   }
-# }
-
-# resource "aws_s3_bucket_policy" "logging" {
-#   bucket = aws_s3_bucket.logging.bucket
-#   policy = data.aws_iam_policy_document.logging_bucket_policy.json
-# }
-
-
+# 2. Logging for Lambda
 # S3 BUCKET FOR LOGGING (Lambda)
 
 
