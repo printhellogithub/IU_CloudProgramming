@@ -217,7 +217,8 @@ resource "aws_cloudfront_distribution" "cactify_distribution" {
 
 # Create Route53 records for the CloudFront distribution aliases
 data "aws_route53_zone" "cactify_domain" {
-  name = local.main_domain
+  name    = local.main_domain
+  zone_id = "Z06874663LA9REHRJ0CLV"
 }
 
 resource "aws_route53_record" "cloudfront" {
@@ -232,6 +233,9 @@ resource "aws_route53_record" "cloudfront" {
     evaluate_target_health = false
   }
 }
+# AAAA-Eintrag?
+# AWS-SES Einträge? TXT, MX, CNAMES?
+
 # ----------------------------------------------------------------
 # ----------------------------------------------------------------
 
@@ -302,19 +306,6 @@ resource "aws_cloudwatch_log_delivery" "cactify_distribution" {
 
 # S3 BUCKET FOR LOGGING (Lambda)
 
-
-# ROUTE 53
-resource "aws_route53_zone" "primary" {
-  name = "florianjanssens.de"
-}
-
-
-import {
-  to = aws_route53_zone.myzone
-  identity = {
-    zone_id = "Z1D633PJN98FT9"
-  }
-}
 
 # API-GATEWAY
 
