@@ -22,8 +22,8 @@ data "aws_route53_zone" "cactify_domain" {
 # ----------------------------------------------------------------
 # S3 Bucket 
 resource "aws_s3_bucket" "cactify-website-content" {
-  bucket           = format("cactify-website-content-%s-%s-an", data.aws_caller_identity.current.account_id, data.aws_region.current.name)
-#  bucket_namespace = "account-regional"
+  bucket = format("cactify-website-content-%s-%s-an", data.aws_caller_identity.current.account_id, data.aws_region.current.name)
+  #  bucket_namespace = "account-regional"
 
   tags = {
     Name = var.s3_bucket_name
@@ -90,6 +90,33 @@ data "aws_iam_policy_document" "origin_bucket_policy" {
     }
   }
 }
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+# Adding Website-Contents to S3-cactify-website-content-Bucket
+#Index.html
+resource "aws_s3_object" "index" {
+  bucket       = aws_s3_bucket.cactify-website-content.bucket
+  key          = "index.html"
+  source       = "src/index.html"
+  etag         = filemd5("src/index.html")
+  content_type = "text/html"
+}
+# Download_Button_V1_green.svg
+resource "aws_s3_object" "Download_Button" {
+  bucket       = aws_s3_bucket.cactify-website-content.bucket
+  key          = "Download_Button_V1_green.svg"
+  source       = "src/Download_Button_V1_green.svg"
+  etag         = filemd5("src/Download_Button_V1_green.svg")
+  content_type = "image/svg+xml"
+}
+# Kaktus_V1.svg
+resource "aws_s3_object" "Kaktus" {
+  bucket       = aws_s3_bucket.cactify-website-content.bucket
+  key          = "Kaktus_V1.svg"
+  source       = "src/Kaktus_V1.svg"
+  etag         = filemd5("src/Kaktus_V1.svg")
+  content_type = "image/svg+xml"
+}
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
 # ACM (Certificate Manager) + DNS-Validierung
 # ----------------------------------------------------------------
@@ -266,7 +293,7 @@ resource "aws_s3_bucket" "cactify-logging" {
 }
 # Log Delivery Destination
 resource "aws_cloudwatch_log_delivery_destination" "cactify_distribution" {
-#  region = "us-east-1"
+  #  region = "us-east-1"
 
   name          = "s3-destination"
   output_format = "parquet"

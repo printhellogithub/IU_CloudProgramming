@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cactify</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            color: #f8f3d0;
+            background: radial-gradient(circle at top, #005a35 0%, #00482b 45%, #00351f 100%);
+            min-height: 100vh;
+        }
+
+        header {
+            padding: clamp(2rem, 5vw, 4rem) 1.5rem 2rem;
+            color: #ffe000;
+            overflow: hidden;
+        }
+
+        .hero-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1.15fr 0.85fr;
+            align-items: center;
+            gap: clamp(2rem, 5vw, 4rem);
+        }
+
+        .hero-copy {
+            text-align: left;
+        }
+
+        .logo-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .logo-container img {
+            width: min(320px, 68vw);
+            height: auto;
+            filter: drop-shadow(0 28px 40px rgba(0, 0, 0, 0.18));
+        }
+
+        header h1 {
+            font-size: clamp(3.8rem, 8.6vw, 6.6rem);
+            margin-bottom: 0.9rem;
+            font-family: 'Cooper Black', 'Arial Rounded MT Bold', 'Trebuchet MS', sans-serif;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            line-height: 0.95;
+            color: #ffd800;
+        }
+
+        header p {
+            font-size: clamp(1.5rem, 2.5vw, 2.05rem);
+            line-height: 1.2;
+            margin-bottom: 2rem;
+            font-weight: 700;
+            color: #fff2bf;
+        }
+
+        .download-section {
+            margin: 0;
+        }
+
+        .download-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.9rem;
+            padding: 0.9rem 1.25rem 0.9rem 1rem;
+            border-radius: 999px;
+            background: #ffe000;
+            color: #00482b;
+            cursor: pointer;
+            text-decoration: none;
+            box-shadow: 0 18px 30px rgba(0, 0, 0, 0.2);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .download-button img {
+            width: 72px;
+            height: auto;
+            display: block;
+            flex: none;
+        }
+
+        .download-button span {
+            font-size: 1rem;
+            font-weight: 800;
+            letter-spacing: 0.02em;
+            white-space: nowrap;
+            color: #00482b;
+        }
+
+        .download-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 22px 36px rgba(0, 0, 0, 0.24);
+        }
+
+        main {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem 2rem;
+        }
+
+        .contact-section {
+            background: rgba(247, 241, 205, 0.98);
+            border: 2px solid rgba(255, 224, 0, 0.55);
+            border-top: 10px solid #ffe000;
+            border-radius: 24px;
+            box-shadow: 0 28px 60px rgba(0, 0, 0, 0.22);
+            padding: 2.25rem;
+            margin-top: 2rem;
+            color: #183d2b;
+        }
+
+        .contact-section h2 {
+            font-size: 1.8rem;
+            margin-bottom: 1rem;
+            color: #00482b;
+            text-align: center;
+            text-transform: uppercase;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+        }
+
+        .contact-intro {
+            text-align: center;
+            margin-bottom: 2rem;
+            font-size: 1.1rem;
+            color: #355344;
+            font-weight: 700;
+        }
+
+        .contact-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .form-group label {
+            font-weight: bold;
+            font-size: 1rem;
+            color: #234635;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            padding: 0.8rem;
+            border: 1px solid rgba(0, 72, 43, 0.18);
+            border-radius: 14px;
+            font-size: 1rem;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.92);
+            color: #183d2b;
+        }
+
+        .form-group textarea {
+            min-height: 150px;
+            resize: vertical;
+            max-height: 300px;
+        }
+
+        .form-group textarea::placeholder {
+            color: #999;
+        }
+
+        .submit-btn {
+            background-color: #00482b;
+            color: #ffe000;
+            border: none;
+            padding: 1rem;
+            font-size: 1rem;
+            border-radius: 999px;
+            cursor: pointer;
+            transition: transform 0.2s ease, background-color 0.3s ease;
+            width: 100%;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        .submit-btn:hover {
+            background-color: #00351f;
+            transform: translateY(-1px);
+        }
+
+        footer {
+            text-align: center;
+            padding: 1.5rem;
+            background-color: #00482B;
+            color: #FFD800;
+            margin-top: 2rem;
+        }
+
+        @media (max-width: 768px) {
+            .hero-content {
+                grid-template-columns: 1fr;
+            }
+
+            .hero-copy {
+                text-align: center;
+            }
+
+            .logo-container {
+                order: -1;
+            }
+
+            header p {
+                font-size: 1.15rem;
+            }
+
+            .contact-section {
+                padding: 1.5rem;
+                border-radius: 20px;
+            }
+
+            .contact-form {
+                gap: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="hero-content">
+            <div class="hero-copy">
+                <h1>CACTIFY</h1>
+                <p><strong>Give your cacti some love.<br>With Cactify.</strong></p>
+                <div class="download-section">
+                    <a class="download-button" href="#" aria-label="Download the App now">
+                        <img src="Download_Button_V1_green.svg" alt="Download the App now">
+                        <span>Download the App now</span>
+                    </a>
+                </div>
+            </div>
+            <div class="logo-container">
+                <img src="Kaktus_V1.svg" alt="Cactify Logo">
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <section class="contact-section">
+            <h2>Contact</h2>
+            <p class="contact-intro">You want to write us? Share your thoughts with us here:</p>
+
+            <form class="contact-form" id="contactForm">
+                <div class="form-group">
+                    <label for="firstName">First Name</label>
+                    <input type="text" id="firstName" name="firstName" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="lastName">Last Name</label>
+                    <input type="text" id="lastName" name="lastName" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="message">Your Message (max. 2000 characters)</label>
+                    <textarea 
+                        id="message" 
+                        name="message" 
+                        maxlength="2000" 
+                        placeholder="Write your message here..." 
+                        required
+                    ></textarea>
+                    <small><span id="charCount">0</span>/2000 characters</small>
+                </div>
+
+                <button type="submit" class="submit-btn">Send Message</button>
+            </form>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 Cactify. All rights reserved.</p>
+    </footer>
+
+    <script>
+        const message = document.getElementById('message');
+        const charCount = document.getElementById('charCount');
+
+        message.addEventListener('input', () => {
+            const currentLength = message.value.length;
+            charCount.textContent = currentLength;
+
+            if (currentLength > 2000) {
+                message.value = message.value.substring(0, 2000);
+                charCount.textContent = 2000;
+                charCount.style.color = 'red';
+            } else {
+                charCount.style.color = '#555';
+            }
+        });
+
+        const contactForm = document.getElementById('contactForm');
+
+        contactForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            alert('Form submitted successfully! (Demo)');
+            contactForm.reset();
+            charCount.textContent = '0';
+        });
+    </script>
+</body>
+</html>
