@@ -6,9 +6,8 @@ provider "aws" {
 # LOCALS
 locals {
   s3_origin_id   = aws_s3_bucket.cactify-website-content.id
-  cactify_domain = "cactify.florianjanssens.de"
-  main_domain    = "florianjanssens.de"
-  hosted_zone_id = "Z06874663LA9REHRJ0CLV"
+  cactify_domain = "${var.domain_config.subdomain}.${var.domain_config.main_domain}"
+  hosted_zone_id = data.aws_route53_zone.cactify_domain.zone_id
 }
 
 # DATENQUELLEN
@@ -16,16 +15,15 @@ data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
 
 data "aws_route53_zone" "cactify_domain" {
-  name    = local.main_domain
-  zone_id = local.hosted_zone_id
+  name = var.domain_config.main_domain
 }
 
 # S3 BUCKET WEBSITE CONTENTS
 # ----------------------------------------------------------------
 # S3 Bucket 
 resource "aws_s3_bucket" "cactify-website-content" {
-  bucket           = format("cactify-website-content-%s-%s-an", data.aws_caller_identity.current.account_id, data.aws_region.current.region)
-  bucket_namespace = "account-regional"
+  bucket           = format("cactify-website-content-%s-%s-an", data.aws_caller_identity.current.account_id, data.aws_region.current.name)
+#  bucket_namespace = "account-regional"
 
   tags = {
     Name = var.s3_bucket_name
@@ -209,7 +207,7 @@ resource "aws_cloudfront_distribution" "cactify_distribution" {
     viewer_protocol_policy = "redirect-to-https"
   }
 
-  price_class = "PriceClass_ALL"
+  price_class = "PriceClass_All"
 
   restrictions {
     geo_restriction {
@@ -255,7 +253,7 @@ resource "aws_route53_record" "cloudfront" {
 
 # Cloudwatch Log Delivery Source
 resource "aws_cloudwatch_log_delivery_source" "cactify_distribution" {
-  region = "us-east-1"
+  # region = "us-east-1"
 
   name         = "cactify_distribution"
   log_type     = "ACCESS_LOGS"
@@ -268,7 +266,7 @@ resource "aws_s3_bucket" "cactify-logging" {
 }
 # Log Delivery Destination
 resource "aws_cloudwatch_log_delivery_destination" "cactify_distribution" {
-  region = "us-east-1"
+#  region = "us-east-1"
 
   name          = "s3-destination"
   output_format = "parquet"
@@ -279,7 +277,7 @@ resource "aws_cloudwatch_log_delivery_destination" "cactify_distribution" {
 }
 # Log Delivery
 resource "aws_cloudwatch_log_delivery" "cactify_distribution" {
-  region = "us-east-1"
+  # region = "us-east-1"
 
   delivery_source_name     = aws_cloudwatch_log_delivery_source.cactify_distribution.name
   delivery_destination_arn = aws_cloudwatch_log_delivery_destination.cactify_distribution.arn

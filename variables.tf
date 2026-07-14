@@ -4,3 +4,13 @@ variable "s3_bucket_name" {
   default     = "cactify-website-content"
 }
 
+variable "domain_config" {
+  type = object({
+    main_domain = string
+    subdomain   = string
+  })
+  default = {
+    main_domain = "florianjanssens.de"
+    subdomain   = "cactify"
+  }
+}
