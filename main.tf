@@ -96,24 +96,24 @@ data "aws_iam_policy_document" "origin_bucket_policy" {
 resource "aws_s3_object" "index" {
   bucket       = aws_s3_bucket.cactify-website-content.bucket
   key          = "index.html"
-  source       = "src/index.html"
-  etag         = filemd5("src/index.html")
+  source       = "./src/index.html"
+  etag         = filemd5("./src/index.html")
   content_type = "text/html"
 }
 # Download_Button_V1_green.svg
 resource "aws_s3_object" "Download_Button" {
   bucket       = aws_s3_bucket.cactify-website-content.bucket
   key          = "Download_Button_V1_green.svg"
-  source       = "src/Download_Button_V1_green.svg"
-  etag         = filemd5("src/Download_Button_V1_green.svg")
+  source       = "./src/Download_Button_V1_green.svg"
+  etag         = filemd5("./src/Download_Button_V1_green.svg")
   content_type = "image/svg+xml"
 }
 # Kaktus_V1.svg
 resource "aws_s3_object" "Kaktus" {
   bucket       = aws_s3_bucket.cactify-website-content.bucket
   key          = "Kaktus_V1.svg"
-  source       = "src/Kaktus_V1.svg"
-  etag         = filemd5("src/Kaktus_V1.svg")
+  source       = "./src/Kaktus_V1.svg"
+  etag         = filemd5("./src/Kaktus_V1.svg")
   content_type = "image/svg+xml"
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
@@ -319,10 +319,87 @@ resource "aws_cloudwatch_log_delivery" "cactify_distribution" {
 
 
 # API-GATEWAY
+# API-Gateway: API
+resource "aws_apigatewayv2_api" "contact" {
+  name          = "contact-api"
+  protocol_type = "HTTP"
+  description   = "Forwards incomming Request to Lambda function"
+}
+# API-Gateway: Integration
+resource "aws_apigatewayv2_integration" "example" {
+  api_id           = aws_apigatewayv2_api.example.id
+  integration_type = "HTTP_PROXY"
 
+  integration_method = "ANY"
+  integration_uri    = "https://example.com/{proxy}"
+}
+# API-Gateway: Route
+resource "aws_apigatewayv2_route" "example" {
+  api_id    = aws_apigatewayv2_api.example.id
+  route_key = "ANY /example/{proxy+}"
+
+  target = "integrations/${aws_apigatewayv2_integration.example.id}"
+}
+# API-Gateway: Deployment
+resource "aws_apigatewayv2_deployment" "example" {
+  api_id      = aws_apigatewayv2_api.example.id
+  description = "Example deployment"
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
 
 # LAMBDA 
+# IAM role for Lambda execution
+data "aws_iam_policy_document" "assume_role" {
+  statement {
+    effect = "Allow"
 
+    principals {
+      type        = "Service"
+      identifiers = ["lambda.amazonaws.com"]
+    }
+
+    actions = ["sts:AssumeRole"]
+  }
+}
+
+resource "aws_iam_role" "contact" {
+  name               = "lambda_execution_role"
+  assume_role_policy = data.aws_iam_policy_document.assume_role.json
+}
+
+# Package the Lambda function code
+data "archive_file" "contact-lambda-function" {
+  type        = "zip"
+  source_file = "./lambda/contact.py"
+  output_path = "./lambda/function.zip"
+}
+
+# Lambda function
+resource "aws_lambda_function" "contact" {
+  filename      = data.archive_file.contact-lambda-function.output_path
+  function_name = "contact_lambda_function"
+  role          = aws_iam_role.contact.arn
+  handler       = "contact.lambda_handler"
+  code_sha256   = data.archive_file.contact-lambda-function.output_base64sha256
+#  source_code_hash = filebase64sha256(data.archive_file.contact-lambda-function.output_path)
+
+  runtime = "python3.13"
+
+  environment {
+    variables = {
+      ENVIRONMENT = "production"
+      LOG_LEVEL   = "info"
+    }
+  }
+
+  tags = {
+    Environment = "production"
+    Application = "contact"
+  }
+}
 
 # AWS SES
 
