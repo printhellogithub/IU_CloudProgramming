@@ -26,7 +26,7 @@ resource "aws_s3_bucket" "cactify-website-content" {
   #  bucket_namespace = "account-regional"
 
   tags = {
-    Name = var.s3_bucket_name
+    Name = var.s3_website_content_bucket_name
   }
 }
 # S3 Bucket Ownership Controls
@@ -314,79 +314,137 @@ resource "aws_cloudwatch_log_delivery" "cactify_distribution" {
     suffix_path = format("/%s/%s/{yyyy}/{MM}/{dd}/{HH}", data.aws_caller_identity.current.account_id, aws_cloudfront_distribution.cactify_distribution.id)
   }
 }
-# 2. Logging for Lambda
-# S3 BUCKET FOR LOGGING (Lambda)
-
-
+# ----------------------------------------------------------------
 # API-GATEWAY
+# ----------------------------------------------------------------
 # API-Gateway: API
 resource "aws_apigatewayv2_api" "contact" {
   name          = "contact-api"
   protocol_type = "HTTP"
   description   = "Forwards incomming Request to Lambda function"
 }
+
+resource "aws_apigatewayv2_stage" "contact" {
+  api_id = aws_apigatewayv2_api.contact.id
+
+  name = "serverless_lambda_stage"
+  auto_deploy = true
+
+  access_log_settings {
+    destination_arn = aws_cloudwatch_log_group.api_gw.arn
+
+    format = jsonencode({
+      requestId               = "$context.requestId"
+      sourceIp                = "$context.identity.sourceIp"
+      requestTime             = "$context.requestTime"
+      protocol                = "$context.protocol"
+      httpMethod              = "$context.httpMethod"
+      resourcePath            = "$context.resourcePath"
+      routeKey                = "$context.routeKey"
+      status                  = "$context.status"
+      responseLength          = "$context.responseLength"
+      integrationErrorMessage = "$context.integrationErrorMessage"
+    })
+  }
+}
+
 # API-Gateway: Integration
-resource "aws_apigatewayv2_integration" "example" {
-  api_id           = aws_apigatewayv2_api.example.id
-  integration_type = "HTTP_PROXY"
+resource "aws_apigatewayv2_integration" "contact" {
+  api_id           = aws_apigatewayv2_api.contact.id
+  integration_type = "AWS_PROXY"
 
-  integration_method = "ANY"
-  integration_uri    = "https://example.com/{proxy}"
+  integration_method = "POST"
+  # integration_uri    = "https://example.com/{proxy}"
 }
+
 # API-Gateway: Route
-resource "aws_apigatewayv2_route" "example" {
-  api_id    = aws_apigatewayv2_api.example.id
-  route_key = "ANY /example/{proxy+}"
+resource "aws_apigatewayv2_route" "contact" {
+  api_id    = aws_apigatewayv2_api.contact.id
 
-  target = "integrations/${aws_apigatewayv2_integration.example.id}"
+  route_key = "POST /contact"
+  target = "integrations/${aws_apigatewayv2_integration.contact.id}"
 }
+
+resource "aws_cloudwatch_log_group" "api_gw" {
+  name = "/aws/api_gw/${aws_apigatewayv2_api.contact.name}"
+
+  retention_in_days = 7
+}
+
+resource "aws_lambda_permission" "api_gw" {
+  statement_id = "AllowExecutionFromAPIGateway"
+  action = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.contact.function_name
+  principal = "apigateway.amazonaws.com"
+
+  source_arn = "${aws_apigatewayv2_api.lambda.execution_arn}/*/*"
+}
+
 # API-Gateway: Deployment
-resource "aws_apigatewayv2_deployment" "example" {
-  api_id      = aws_apigatewayv2_api.example.id
-  description = "Example deployment"
+resource "aws_apigatewayv2_deployment" "contact" {
+  api_id      = aws_apigatewayv2_api.contact.id
+  description = "Contact deployment"
 
   lifecycle {
     create_before_destroy = true
   }
 }
-
+# ----------------------------------------------------------------
 # LAMBDA 
-# IAM role for Lambda execution
-data "aws_iam_policy_document" "assume_role" {
-  statement {
-    effect = "Allow"
+# ----------------------------------------------------------------
+# S3 Bucket for Lambda Function
+resource "aws_s3_bucket" "lambda_bucket" {
+  bucket = format("cactify-lambda-bucket-%s-%s-an", data.aws_caller_identity.current.account_id, data.aws_region.current.name)
 
-    principals {
-      type        = "Service"
-      identifiers = ["lambda.amazonaws.com"]
-    }
-
-    actions = ["sts:AssumeRole"]
+  tags = {
+    Name = var.s3_lambda_bucket_name
   }
 }
 
-resource "aws_iam_role" "contact" {
-  name               = "lambda_execution_role"
-  assume_role_policy = data.aws_iam_policy_document.assume_role.json
+resource "aws_s3_bucket_ownership_controls" "lambda_bucket" {
+  bucket = aws_s3_bucket.lambda_bucket.id
+  rule {
+    object_ownership = "BucketOwnerPreferred"
+  }
+}
+
+resource "aws_s3_bucket_acl" "lambda_bucket" {
+  depends_on = [aws_s3_bucket_ownership_controls.lambda_bucket]
+
+  bucket = aws_s3_bucket.lambda_bucket.id
+  acl = "private"
 }
 
 # Package the Lambda function code
-data "archive_file" "contact-lambda-function" {
+data "archive_file" "lambda-contact-function" {
   type        = "zip"
   source_file = "./lambda/contact.py"
   output_path = "./lambda/function.zip"
 }
+# Upload archive to S3
+resource "aws_s3_object" "lambda-contact-function" {
+  bucket = aws_s3_bucket.lambda_bucket.id
+
+  key = "function.zip"
+  source = data.archive_file.lambda-contact-function.output_path
+
+  etag = filemd5(data.archive_file.lambda-contact-function.output_path)
+}
 
 # Lambda function
 resource "aws_lambda_function" "contact" {
-  filename      = data.archive_file.contact-lambda-function.output_path
+  
   function_name = "contact_lambda_function"
-  role          = aws_iam_role.contact.arn
-  handler       = "contact.lambda_handler"
-  code_sha256   = data.archive_file.contact-lambda-function.output_base64sha256
-#  source_code_hash = filebase64sha256(data.archive_file.contact-lambda-function.output_path)
+
+  s3_bucket = aws_s3_bucket.lambda_bucket.id
+  s3_key = aws_s3_object.lambda-contact-function.key
 
   runtime = "python3.13"
+  handler       = "contact.lambda_handler"
+
+  source_code_hash = data.archive_file.lambda-contact-function.output_base64sha256
+
+  role          = aws_iam_role.contact.arn
 
   environment {
     variables = {
@@ -401,14 +459,138 @@ resource "aws_lambda_function" "contact" {
   }
 }
 
+resource "aws_cloudwatch_log_group" "contact" {
+  name = "/aws/lambda/${aws_lambda_function.contact.function_name}"
+
+  # Retention für Produktion eher 30 Tage. Um auf jeden Fall im Free Tier zu bleiben - hier 7 Tage.
+  retention_in_days = 7
+}
+
+resource "aws_iam_role" "lambda_exec" {
+  name = "serverless_lambda"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Sid    = ""
+      Principal = {
+        Service = "lambda.amazonaws.com"
+      }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_policy" {
+  role = aws_iam_role.lambda_exec.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+  
+}
+
+# # IAM role for Lambda execution
+# data "aws_iam_policy_document" "assume_role" {
+#   statement {
+#     effect = "Allow"
+
+#     principals {
+#       type        = "Service"
+#       identifiers = ["lambda.amazonaws.com"]
+#     }
+
+#     actions = ["sts:AssumeRole"]
+#   }
+# }
+
+# resource "aws_iam_role" "contact" {
+#   name               = "lambda_execution_role"
+#   assume_role_policy = data.aws_iam_policy_document.assume_role.json
+# }
+
+# ----------------------------------------------------------------
 # AWS SES
+# ----------------------------------------------------------------
+resource "aws_sesv2_email_identity" "service" {
+  email_identity = "service@florianjanssens.de"
+}
 
+# resource "aws_sesv2_email_identity" "cactify-domain" {
+#   email_identity = "cactify.florianjanssens.de"
+#   configuration_set_name = aws_sesv2_configuration_set.main.configuration_set_name
 
-# IAM ROLE MODUL
+#   dkim_signing_attributes {
+#     domain_signing_private_key = "MIIJKAIBAAKCAgEA2Se7p8zvnI4yh+Gh9j2rG5e2aRXjg03Y8saiupLnadPH9xvM..." #PEM private key without headers or newline characters
+#     domain_signing_selector    = "example"
+#   }
+# }
 
+resource "aws_ses_domain_identity" "cactify_domain" {
+  domain = "cactify.florianjanssens.de"
+}
+
+resource "aws_route53_record" "cactify_amazonses_verification_record" {
+  zone_id = "Z06874663LA9REHRJ0CLV"
+  name    = "_amazonses.cactify.florianjanssens.de"
+  type    = "TXT"
+  ttl     = "600"
+  records = [aws_ses_domain_identity.cactify_domain.verification_token]
+}
+
+resource "aws_sesv2_configuration_set" "main" {
+  configuration_set_name = "my-cactify-config-set"
+}
 
 # IAM ROLE LAMBDA-SES
+resource "aws_iam_role" "lambda-ses-role" {
+  name = lambda-ses-role
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "lambda.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+}
 
+resource "aws_iam_role_policy" "lambda_ses_policy" {
+  name = lambda-send-with-ses
+  role = aws_iam_role.lambda-ses-role.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["ses:SendEmail", "ses:SendRawEmail"]
+      Resource = [
+        aws_sesv2_email_identity.cactify-domain.arn,
+        aws_sesv2_configuration_set.main.arn
+      ]
+    }]
+  })
+}
 
-# Budget 
+resource "aws_sesv2_configuration_set_event_destination" "main" {
+  configuration_set_name = aws_sesv2_configuration_set.main.configuration_set_name
+  event_destination_name = "SES-main"
+
+  event_destination {
+    cloud_watch_destination {
+      dimension_configuration {
+        dimension_name = "EventType"
+        default_dimension_value = "Unknown"
+        dimension_value_source = "MESSAGE_TAG"
+      }
+      dimension_configuration {
+        dimension_name = "RecipientDomain"
+        default_dimension_value = "Internal"
+        dimension_value_source = "EMAIL_HEADER"
+      }
+    }
+
+    enabled              = true
+    matching_event_types = ["send", "bounce", "complaint", "delivery", "reject"]
+  }
+}
+
 # Monitoring (Cloudwatch)
