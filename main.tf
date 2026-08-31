@@ -5,9 +5,10 @@ provider "aws" {
 
 # LOCALS
 locals {
-  s3_origin_id   = aws_s3_bucket.cactify-website-content.id
-  cactify_domain = "${var.domain_config.subdomain}.${var.domain_config.main_domain}"
-  hosted_zone_id = data.aws_route53_zone.cactify_domain.zone_id
+  s3_origin_id          = aws_s3_bucket.cactify-website-content.id
+  cactify_domain        = "${var.domain_config.subdomain}.${var.domain_config.main_domain}"
+  hosted_zone_id        = data.aws_route53_zone.cactify_domain.zone_id
+  api_gateway_origin_id = aws_apigatewayv2_api.contact.id
 }
 
 # DATENQUELLEN
@@ -76,7 +77,6 @@ data "aws_iam_policy_document" "origin_bucket_policy" {
 
     actions = [
       "s3:GetObject",
-      "s3:PutObject",
     ]
 
     resources = [
@@ -157,10 +157,23 @@ resource "aws_acm_certificate_validation" "cactify_cf" {
 # CLOUDFRONT DISTRIBUTION
 # ----------------------------------------------------------------
 resource "aws_cloudfront_distribution" "cactify_distribution" {
+  # S3-Website-Contents-Origin
   origin {
     domain_name              = aws_s3_bucket.cactify-website-content.bucket_regional_domain_name
     origin_access_control_id = aws_cloudfront_origin_access_control.default.id
     origin_id                = local.s3_origin_id
+  }
+  # API-Gateway-Origin /contact
+  origin {
+    domain_name = aws_apigatewayv2_api.contact.api_endpoint
+    origin_id   = local.api_gateway_origin_id
+
+    custom_origin_config {
+      http_port              = "/contact"
+      https_port             = "/contact"
+      origin_protocol_policy = "https-only"
+      origin_ssl_protocols   = ["TLSv1.2"]
+    }
   }
 
   enabled             = true
@@ -171,7 +184,8 @@ resource "aws_cloudfront_distribution" "cactify_distribution" {
   aliases = ["${local.cactify_domain}", "www.${local.cactify_domain}"]
 
   default_cache_behavior {
-    allowed_methods  = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    # allowed_methods  = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    allowed_methods  = ["GET", "HEAD", "OPTIONS", "POST"]
     cached_methods   = ["GET", "HEAD"]
     target_origin_id = local.s3_origin_id
 
@@ -183,7 +197,7 @@ resource "aws_cloudfront_distribution" "cactify_distribution" {
       }
     }
 
-    viewer_protocol_policy = "allow-all"
+    viewer_protocol_policy = "redirect-to-https"
     min_ttl                = 0
     default_ttl            = 3600
     max_ttl                = 86400
@@ -234,7 +248,10 @@ resource "aws_cloudfront_distribution" "cactify_distribution" {
     viewer_protocol_policy = "redirect-to-https"
   }
 
-  price_class = "PriceClass_All"
+  # price_class_100 ist nicht weltweit: Nur United States, Mexico, and Canada, Europe, Israel, and Türkiye
+  # Für eine weltweite Abdeckung wäre "PriceClass_All" erforderlich. 
+  # Diese Einstellung wurde zum Schutz des Studenten im Rahmen des Projektes auf "PriceClass_100" gestellt.
+  price_class = "PriceClass_100"
 
   restrictions {
     geo_restriction {
@@ -327,7 +344,7 @@ resource "aws_apigatewayv2_api" "contact" {
 resource "aws_apigatewayv2_stage" "contact" {
   api_id = aws_apigatewayv2_api.contact.id
 
-  name = "serverless_lambda_stage"
+  name        = "serverless_lambda_stage"
   auto_deploy = true
 
   access_log_settings {
@@ -354,15 +371,15 @@ resource "aws_apigatewayv2_integration" "contact" {
   integration_type = "AWS_PROXY"
 
   integration_method = "POST"
-  # integration_uri    = "https://example.com/{proxy}"
+  integration_uri    = aws_lambda_function.contact.invoke_arn
 }
 
 # API-Gateway: Route
 resource "aws_apigatewayv2_route" "contact" {
-  api_id    = aws_apigatewayv2_api.contact.id
+  api_id = aws_apigatewayv2_api.contact.id
 
   route_key = "POST /contact"
-  target = "integrations/${aws_apigatewayv2_integration.contact.id}"
+  target    = "integrations/${aws_apigatewayv2_integration.contact.id}"
 }
 
 resource "aws_cloudwatch_log_group" "api_gw" {
@@ -372,12 +389,12 @@ resource "aws_cloudwatch_log_group" "api_gw" {
 }
 
 resource "aws_lambda_permission" "api_gw" {
-  statement_id = "AllowExecutionFromAPIGateway"
-  action = "lambda:InvokeFunction"
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.contact.function_name
-  principal = "apigateway.amazonaws.com"
+  principal     = "apigateway.amazonaws.com"
 
-  source_arn = "${aws_apigatewayv2_api.lambda.execution_arn}/*/*"
+  source_arn = "${aws_apigatewayv2_api.contact.execution_arn}/*/*"
 }
 
 # API-Gateway: Deployment
@@ -412,8 +429,16 @@ resource "aws_s3_bucket_acl" "lambda_bucket" {
   depends_on = [aws_s3_bucket_ownership_controls.lambda_bucket]
 
   bucket = aws_s3_bucket.lambda_bucket.id
-  acl = "private"
+  acl    = "private"
 }
+
+# # S3 Bucket Versioning
+# resource "aws_s3_bucket_versioning" "lambda_bucket" {
+#   bucket = aws_s3_bucket.lambda_bucket.id
+#   versioning_configuration {
+#     status = "Enabled"
+#   }
+# }
 
 # Package the Lambda function code
 data "archive_file" "lambda-contact-function" {
@@ -425,7 +450,7 @@ data "archive_file" "lambda-contact-function" {
 resource "aws_s3_object" "lambda-contact-function" {
   bucket = aws_s3_bucket.lambda_bucket.id
 
-  key = "function.zip"
+  key    = "function.zip"
   source = data.archive_file.lambda-contact-function.output_path
 
   etag = filemd5(data.archive_file.lambda-contact-function.output_path)
@@ -433,18 +458,19 @@ resource "aws_s3_object" "lambda-contact-function" {
 
 # Lambda function
 resource "aws_lambda_function" "contact" {
-  
+
   function_name = "contact_lambda_function"
 
   s3_bucket = aws_s3_bucket.lambda_bucket.id
-  s3_key = aws_s3_object.lambda-contact-function.key
+  s3_key    = aws_s3_object.lambda-contact-function.key
 
   runtime = "python3.13"
-  handler       = "contact.lambda_handler"
+  handler = "contact.lambda_handler"
 
   source_code_hash = data.archive_file.lambda-contact-function.output_base64sha256
 
-  role          = aws_iam_role.contact.arn
+  role = aws_iam_role.lambda_exec.arn
+
 
   environment {
     variables = {
@@ -466,6 +492,7 @@ resource "aws_cloudwatch_log_group" "contact" {
   retention_in_days = 7
 }
 
+# LAMBDA IAM Exec ROLE
 resource "aws_iam_role" "lambda_exec" {
   name = "serverless_lambda"
 
@@ -483,11 +510,47 @@ resource "aws_iam_role" "lambda_exec" {
   })
 }
 
-resource "aws_iam_role_policy_attachment" "lambda_policy" {
-  role = aws_iam_role.lambda_exec.name
+# Policy provides write permissions to CloudWatch Logs
+resource "aws_iam_role_policy_attachment" "lambda_cloudwatch_policy" {
+  role       = aws_iam_role.lambda_exec.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-  
 }
+
+# Policy provides permissions to send emails with ses
+resource "aws_iam_role_policy" "lambda_ses_policy" {
+  name = "lambda-send-with-ses"
+  role = aws_iam_role.lambda_exec.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = ["ses:SendEmail", "ses:SendRawEmail"]
+      Resource = [
+        aws_sesv2_domain_identity.cactify_domain.arn,
+        aws_sesv2_configuration_set.main.arn
+      ]
+    }]
+  })
+}
+
+# resource "aws_iam_role_policy_attachment" "lambda_ses_policy" {
+#   role = aws_iam_role.lambda_exec.name
+#   policy_arn = aws_iam_role_policy.lambda_ses_policy.id
+# }
+
+# # IAM ROLE LAMBDA-SES
+# resource "aws_iam_role" "lambda-ses-role" {
+#   name = "lambda-ses-role"
+#   assume_role_policy = jsonencode({
+#     Version = "2012-10-17"
+#     Statement = [{
+#       Effect    = "Allow"
+#       Principal = { Service = "lambda.amazonaws.com" }
+#       Action    = "sts:AssumeRole"
+#     }]
+#   })
+# }
+
 
 # # IAM role for Lambda execution
 # data "aws_iam_policy_document" "assume_role" {
@@ -520,7 +583,8 @@ resource "aws_sesv2_email_identity" "service" {
 #   configuration_set_name = aws_sesv2_configuration_set.main.configuration_set_name
 
 #   dkim_signing_attributes {
-#     domain_signing_private_key = "MIIJKAIBAAKCAgEA2Se7p8zvnI4yh+Gh9j2rG5e2aRXjg03Y8saiupLnadPH9xvM..." #PEM private key without headers or newline characters
+#     domain_signing_private_key = "MIIJKAIBAAKCAgEA2Se7p8zvnI4yh+Gh9j2rG5e2aRXjg03Y8saiupLnadPH9xvM..." 
+#PEM private key without headers or newline characters
 #     domain_signing_selector    = "example"
 #   }
 # }
@@ -541,35 +605,6 @@ resource "aws_sesv2_configuration_set" "main" {
   configuration_set_name = "my-cactify-config-set"
 }
 
-# IAM ROLE LAMBDA-SES
-resource "aws_iam_role" "lambda-ses-role" {
-  name = lambda-ses-role
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect    = "Allow"
-      Principal = { Service = "lambda.amazonaws.com" }
-      Action    = "sts:AssumeRole"
-    }]
-  })
-}
-
-resource "aws_iam_role_policy" "lambda_ses_policy" {
-  name = lambda-send-with-ses
-  role = aws_iam_role.lambda-ses-role.id
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect   = "Allow"
-      Action   = ["ses:SendEmail", "ses:SendRawEmail"]
-      Resource = [
-        aws_sesv2_email_identity.cactify-domain.arn,
-        aws_sesv2_configuration_set.main.arn
-      ]
-    }]
-  })
-}
-
 resource "aws_sesv2_configuration_set_event_destination" "main" {
   configuration_set_name = aws_sesv2_configuration_set.main.configuration_set_name
   event_destination_name = "SES-main"
@@ -577,14 +612,14 @@ resource "aws_sesv2_configuration_set_event_destination" "main" {
   event_destination {
     cloud_watch_destination {
       dimension_configuration {
-        dimension_name = "EventType"
+        dimension_name          = "EventType"
         default_dimension_value = "Unknown"
-        dimension_value_source = "MESSAGE_TAG"
+        dimension_value_source  = "MESSAGE_TAG"
       }
       dimension_configuration {
-        dimension_name = "RecipientDomain"
+        dimension_name          = "RecipientDomain"
         default_dimension_value = "Internal"
-        dimension_value_source = "EMAIL_HEADER"
+        dimension_value_source  = "EMAIL_HEADER"
       }
     }
 
