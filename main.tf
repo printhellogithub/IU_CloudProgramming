@@ -168,9 +168,26 @@ resource "aws_cloudfront_distribution" "cactify_distribution" {
     domain_name = aws_apigatewayv2_api.contact.api_endpoint
     origin_id   = local.api_gateway_origin_id
 
+
+# TODO
+# Important:
+# If you choose GET, HEAD, OPTIONS or GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE, 
+# you might need to restrict access to your Amazon S3 bucket or to your custom origin to prevent users from performing 
+# operations that you don't want them to perform. The following examples explain how to restrict access:
+
+# If you're using a custom origin: Configure your origin server to handle all methods. 
+# For example, if you configure CloudFront to accept and forward these methods only because you want to use POST, 
+# you must still configure your origin server to handle DELETE requests appropriately.
+
+
+# TODO / FIX 
+
+# Change API-Gateway to standalone API with own domain api.cactify.florianjanssens.de 
+# Not as second origin in Cloudfront. 
+
     custom_origin_config {
-      http_port              = "/contact"
-      https_port             = "/contact"
+      http_port              = ""
+      https_port             = ""
       origin_protocol_policy = "https-only"
       origin_ssl_protocols   = ["TLSv1.2"]
     }
