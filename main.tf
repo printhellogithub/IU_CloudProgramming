@@ -24,8 +24,6 @@ data "aws_route53_zone" "cactify_domain" {
 # S3 Bucket 
 resource "aws_s3_bucket" "cactify-website-content" {
   bucket = format("cactify-website-content-%s-%s-an", data.aws_caller_identity.current.account_id, data.aws_region.current.name)
-  #  bucket_namespace = "account-regional"
-
   tags = {
     Name = var.s3_website_content_bucket_name
   }
@@ -125,10 +123,6 @@ resource "aws_acm_certificate" "cactify_cf" {
   domain_name               = local.cactify_domain
   subject_alternative_names = ["www.${local.cactify_domain}", "api.${local.cactify_domain}"]
   validation_method         = "DNS"
-  # validation_option {
-  #   domain_name       = "cactify.florianjanssens.de"
-  #   validation_domain = "florianjanssens.de"
-  # }
 }
 # DNS-Einträge für Certificate Validierung
 resource "aws_route53_record" "acm_records" {
@@ -172,7 +166,6 @@ resource "aws_cloudfront_distribution" "cactify_distribution" {
   aliases = ["${local.cactify_domain}", "www.${local.cactify_domain}"]
 
   default_cache_behavior {
-    # allowed_methods  = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
     allowed_methods  = ["GET", "HEAD", "OPTIONS"]
     cached_methods   = ["GET", "HEAD"]
     target_origin_id = local.s3_origin_id
@@ -238,21 +231,19 @@ resource "aws_route53_record" "cloudfront" {
 
 # Cloudwatch Log Delivery Source
 resource "aws_cloudwatch_log_delivery_source" "cactify_distribution" {
-  # region = "us-east-1"
-
   name         = "cactify_distribution"
   log_type     = "ACCESS_LOGS"
   resource_arn = aws_cloudfront_distribution.cactify_distribution.arn
 }
+
 # S3 Log Bucket
 resource "aws_s3_bucket" "cactify-logging" {
   bucket        = "cactify-logging-bucket"
   force_destroy = true
 }
+
 # Log Delivery Destination
 resource "aws_cloudwatch_log_delivery_destination" "cactify_distribution" {
-  #  region = "us-east-1"
-
   name          = "s3-destination"
   output_format = "parquet"
 
@@ -260,15 +251,14 @@ resource "aws_cloudwatch_log_delivery_destination" "cactify_distribution" {
     destination_resource_arn = "${aws_s3_bucket.cactify-logging.arn}/prefix"
   }
 }
+
 # Log Delivery
 resource "aws_cloudwatch_log_delivery" "cactify_distribution" {
-  # region = "us-east-1"
 
   delivery_source_name     = aws_cloudwatch_log_delivery_source.cactify_distribution.name
   delivery_destination_arn = aws_cloudwatch_log_delivery_destination.cactify_distribution.arn
 
   s3_delivery_configuration {
-    # suffix_path = "/123456678910/{DistributionId}/{yyyy}/{MM}/{dd}/{HH}"
     suffix_path = format("/%s/%s/{yyyy}/{MM}/{dd}/{HH}", data.aws_caller_identity.current.account_id, aws_cloudfront_distribution.cactify_distribution.id)
   }
 }
@@ -314,7 +304,7 @@ resource "aws_apigatewayv2_api" "contact" {
       "https://www.${local.cactify_domain}"
     ]
     expose_headers = ["*"]
-    max_age       = 3600
+    max_age        = 3600
   }
 }
 
@@ -419,18 +409,10 @@ resource "aws_s3_bucket_acl" "lambda_bucket" {
   acl    = "private"
 }
 
-# # S3 Bucket Versioning
-# resource "aws_s3_bucket_versioning" "lambda_bucket" {
-#   bucket = aws_s3_bucket.lambda_bucket.id
-#   versioning_configuration {
-#     status = "Enabled"
-#   }
-# }
-
 # Package the Lambda function code
 data "archive_file" "lambda-contact-function" {
   type        = "zip"
-  source_dir = "./lambda-package"
+  source_dir  = "./lambda-package"
   output_path = "./lambda/function.zip"
 }
 # Upload archive to S3
@@ -520,43 +502,6 @@ resource "aws_iam_role_policy" "lambda_ses_policy" {
   })
 }
 
-# resource "aws_iam_role_policy_attachment" "lambda_ses_policy" {
-#   role = aws_iam_role.lambda_exec.name
-#   policy_arn = aws_iam_role_policy.lambda_ses_policy.id
-# }
-
-# # IAM ROLE LAMBDA-SES
-# resource "aws_iam_role" "lambda-ses-role" {
-#   name = "lambda-ses-role"
-#   assume_role_policy = jsonencode({
-#     Version = "2012-10-17"
-#     Statement = [{
-#       Effect    = "Allow"
-#       Principal = { Service = "lambda.amazonaws.com" }
-#       Action    = "sts:AssumeRole"
-#     }]
-#   })
-# }
-
-
-# # IAM role for Lambda execution
-# data "aws_iam_policy_document" "assume_role" {
-#   statement {
-#     effect = "Allow"
-
-#     principals {
-#       type        = "Service"
-#       identifiers = ["lambda.amazonaws.com"]
-#     }
-
-#     actions = ["sts:AssumeRole"]
-#   }
-# }
-
-# resource "aws_iam_role" "contact" {
-#   name               = "lambda_execution_role"
-#   assume_role_policy = data.aws_iam_policy_document.assume_role.json
-# }
 
 # ----------------------------------------------------------------
 # AWS SES
@@ -564,17 +509,6 @@ resource "aws_iam_role_policy" "lambda_ses_policy" {
 resource "aws_sesv2_email_identity" "service" {
   email_identity = "service@florianjanssens.de"
 }
-
-# resource "aws_sesv2_email_identity" "cactify-domain" {
-#   email_identity = "cactify.florianjanssens.de"
-#   configuration_set_name = aws_sesv2_configuration_set.main.configuration_set_name
-
-#   dkim_signing_attributes {
-#     domain_signing_private_key = "MIIJKAIBAAKCAgEA2Se7p8zvnI4yh+Gh9j2rG5e2aRXjg03Y8saiupLnadPH9xvM..." 
-#PEM private key without headers or newline characters
-#     domain_signing_selector    = "example"
-#   }
-# }
 
 resource "aws_ses_domain_identity" "cactify_domain" {
   domain = "cactify.florianjanssens.de"
@@ -614,5 +548,3 @@ resource "aws_sesv2_configuration_set_event_destination" "main" {
     matching_event_types = ["send", "bounce", "complaint", "delivery", "reject"]
   }
 }
-
-# Monitoring (Cloudwatch)
