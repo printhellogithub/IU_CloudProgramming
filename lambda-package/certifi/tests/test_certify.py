@@ -1,7 +1,7 @@
 import os
 import unittest
 
-import certifi
+import lambda.certifi as certifi
 
 
 class TestCertifi(unittest.TestCase):

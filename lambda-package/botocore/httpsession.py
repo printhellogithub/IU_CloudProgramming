@@ -8,31 +8,24 @@ from base64 import b64encode
 from concurrent.futures import CancelledError
 
 from lambda.vendor.urllib3 import PoolManager, Timeout, proxy_from_url
-from lambda.vendor.urllib3.exceptions import (
-    ConnectTimeoutError as URLLib3ConnectTimeoutError,
-)
-from lambda.vendor.urllib3.exceptions import (
-    LocationParseError,
-    NewConnectionError,
-    ProtocolError,
-    ProxyError,
-)
-from lambda.vendor.urllib3.exceptions import ReadTimeoutError as URLLib3ReadTimeoutError
+from lambda.vendor.urllib3.exceptions import \
+    ConnectTimeoutError as URLLib3ConnectTimeoutError
+from lambda.vendor.urllib3.exceptions import (LocationParseError,
+                                              NewConnectionError,
+                                              ProtocolError, ProxyError)
+from lambda.vendor.urllib3.exceptions import \
+    ReadTimeoutError as URLLib3ReadTimeoutError
 from lambda.vendor.urllib3.exceptions import SSLError as URLLib3SSLError
 from lambda.vendor.urllib3.poolmanager import PoolKey
 from lambda.vendor.urllib3.util.retry import Retry
-from lambda.vendor.urllib3.util.ssl_ import (
-    OP_NO_COMPRESSION,
-    PROTOCOL_TLS,
-    OP_NO_SSLv2,
-    OP_NO_SSLv3,
-    is_ipaddress,
-    ssl,
-)
+from lambda.vendor.urllib3.util.ssl_ import (OP_NO_COMPRESSION, PROTOCOL_TLS,
+                                             OP_NO_SSLv2, OP_NO_SSLv3,
+                                             is_ipaddress, ssl)
 from lambda.vendor.urllib3.util.url import parse_url
 
 try:
-    from lambda.vendor.urllib3.util.ssl_ import OP_NO_TICKET, PROTOCOL_TLS_CLIENT
+    from lambda.vendor.urllib3.util.ssl_ import (OP_NO_TICKET,
+                                                 PROTOCOL_TLS_CLIENT)
 except ImportError:
     # Fallback directly to ssl for version of urllib3 before 1.26.
     # They are available in the standard library starting in Python 3.6.
@@ -44,9 +37,8 @@ try:
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", category=DeprecationWarning)
         # Always import the original SSLContext, even if it has been patched
-        from lambda.vendor.urllib3.contrib.pyopenssl import (
-            orig_util_SSLContext as SSLContext,
-        )
+        from lambda.vendor.urllib3.contrib.pyopenssl import \
+            orig_util_SSLContext as SSLContext
 except (AttributeError, ImportError):
     from lambda.vendor.urllib3.util.ssl_ import SSLContext
 
@@ -59,23 +51,16 @@ except ImportError:
     DEFAULT_CIPHERS = None
 
 import lambda.vendor.botocore.awsrequest
-from lambda.vendor.botocore.compat import (
-    IPV6_ADDRZ_RE,
-    ensure_bytes,
-    filter_ssl_warnings,
-    unquote,
-    urlparse,
-)
-from lambda.vendor.botocore.exceptions import (
-    ConnectionClosedError,
-    ConnectTimeoutError,
-    EndpointConnectionError,
-    HTTPClientError,
-    InvalidProxiesConfigError,
-    ProxyConnectionError,
-    ReadTimeoutError,
-    SSLError,
-)
+from lambda.vendor.botocore.compat import (IPV6_ADDRZ_RE, ensure_bytes,
+                                           filter_ssl_warnings, unquote,
+                                           urlparse)
+from lambda.vendor.botocore.exceptions import (ConnectionClosedError,
+                                               ConnectTimeoutError,
+                                               EndpointConnectionError,
+                                               HTTPClientError,
+                                               InvalidProxiesConfigError,
+                                               ProxyConnectionError,
+                                               ReadTimeoutError, SSLError)
 
 filter_ssl_warnings()
 logger = logging.getLogger(__name__)
@@ -93,7 +78,7 @@ if hasattr(PoolKey, 'key_blocksize'):
     BUFFER_SIZE = 1024 * 128
 
 try:
-    from certifi import where
+    from lambda.certifi import where
 except ImportError:
 
     def where():

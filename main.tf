@@ -123,7 +123,7 @@ resource "aws_s3_object" "Kaktus" {
 resource "aws_acm_certificate" "cactify_cf" {
   provider                  = aws
   domain_name               = local.cactify_domain
-  subject_alternative_names = ["www.${local.cactify_domain}"]
+  subject_alternative_names = ["www.${local.cactify_domain}", "api.${local.cactify_domain}"]
   validation_method         = "DNS"
   # validation_option {
   #   domain_name       = "cactify.florianjanssens.de"
@@ -163,35 +163,6 @@ resource "aws_cloudfront_distribution" "cactify_distribution" {
     origin_access_control_id = aws_cloudfront_origin_access_control.default.id
     origin_id                = local.s3_origin_id
   }
-  # API-Gateway-Origin /contact
-  origin {
-    domain_name = aws_apigatewayv2_api.contact.api_endpoint
-    origin_id   = local.api_gateway_origin_id
-
-
-# TODO
-# Important:
-# If you choose GET, HEAD, OPTIONS or GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE, 
-# you might need to restrict access to your Amazon S3 bucket or to your custom origin to prevent users from performing 
-# operations that you don't want them to perform. The following examples explain how to restrict access:
-
-# If you're using a custom origin: Configure your origin server to handle all methods. 
-# For example, if you configure CloudFront to accept and forward these methods only because you want to use POST, 
-# you must still configure your origin server to handle DELETE requests appropriately.
-
-
-# TODO / FIX 
-
-# Change API-Gateway to standalone API with own domain api.cactify.florianjanssens.de 
-# Not as second origin in Cloudfront. 
-
-    custom_origin_config {
-      http_port              = ""
-      https_port             = ""
-      origin_protocol_policy = "https-only"
-      origin_ssl_protocols   = ["TLSv1.2"]
-    }
-  }
 
   enabled             = true
   is_ipv6_enabled     = true
@@ -202,7 +173,7 @@ resource "aws_cloudfront_distribution" "cactify_distribution" {
 
   default_cache_behavior {
     # allowed_methods  = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-    allowed_methods  = ["GET", "HEAD", "OPTIONS", "POST"]
+    allowed_methods  = ["GET", "HEAD", "OPTIONS"]
     cached_methods   = ["GET", "HEAD"]
     target_origin_id = local.s3_origin_id
 
@@ -220,50 +191,6 @@ resource "aws_cloudfront_distribution" "cactify_distribution" {
     max_ttl                = 86400
   }
 
-  # Cache behavior with precedence 0
-  ordered_cache_behavior {
-    path_pattern     = "/content/immutable/*"
-    allowed_methods  = ["GET", "HEAD", "OPTIONS"]
-    cached_methods   = ["GET", "HEAD", "OPTIONS"]
-    target_origin_id = local.s3_origin_id
-
-    forwarded_values {
-      query_string = false
-      headers      = ["Origin"]
-
-      cookies {
-        forward = "none"
-      }
-    }
-
-    min_ttl                = 0
-    default_ttl            = 86400
-    max_ttl                = 31536000
-    compress               = true
-    viewer_protocol_policy = "redirect-to-https"
-  }
-
-  # Cache behavior with precedence 1
-  ordered_cache_behavior {
-    path_pattern     = "/content/*"
-    allowed_methods  = ["GET", "HEAD", "OPTIONS"]
-    cached_methods   = ["GET", "HEAD"]
-    target_origin_id = local.s3_origin_id
-
-    forwarded_values {
-      query_string = false
-
-      cookies {
-        forward = "none"
-      }
-    }
-
-    min_ttl                = 0
-    default_ttl            = 3600
-    max_ttl                = 86400
-    compress               = true
-    viewer_protocol_policy = "redirect-to-https"
-  }
 
   # price_class_100 ist nicht weltweit: Nur United States, Mexico, and Canada, Europe, Israel, and Türkiye
   # Für eine weltweite Abdeckung wäre "PriceClass_All" erforderlich. 
@@ -304,9 +231,6 @@ resource "aws_route53_record" "cloudfront" {
     evaluate_target_health = false
   }
 }
-# AAAA-Eintrag?
-# AWS-SES Einträge? TXT, MX, CNAMES?
-# ----------------------------------------------------------------
 
 # LOGGING
 # ----------------------------------------------------------------
@@ -351,13 +275,57 @@ resource "aws_cloudwatch_log_delivery" "cactify_distribution" {
 # ----------------------------------------------------------------
 # API-GATEWAY
 # ----------------------------------------------------------------
+
+# API-Gateway: Domain Name
+resource "aws_apigatewayv2_domain_name" "contact" {
+  domain_name = "api.cactify.florianjanssens.de"
+
+  domain_name_configuration {
+    certificate_arn = aws_acm_certificate.cactify_cf.arn
+    endpoint_type   = "REGIONAL"
+    security_policy = "TLS_1_2"
+  }
+}
+
+# Route53 Record for API-Gateway -> api.cactify.florianjanssens.de/contact
+resource "aws_route53_record" "api_gateway" {
+  name    = aws_apigatewayv2_domain_name.contact.domain_name
+  type    = "A"
+  zone_id = data.aws_route53_zone.cactify_domain.zone_id
+
+  alias {
+    name                   = aws_apigatewayv2_domain_name.contact.domain_name_configuration[0].target_domain_name
+    zone_id                = aws_apigatewayv2_domain_name.contact.domain_name_configuration[0].hosted_zone_id
+    evaluate_target_health = false
+  }
+}
+
 # API-Gateway: API
 resource "aws_apigatewayv2_api" "contact" {
   name          = "contact-api"
   protocol_type = "HTTP"
-  description   = "Forwards incomming Request to Lambda function"
+  description   = "Forwards incomming request to Lambda function"
+
+  cors_configuration {
+    allow_headers = ["content-type"]
+    allow_methods = ["POST", "OPTIONS"]
+    allow_origins = [
+      "https://${local.cactify_domain}",
+      "https://www.${local.cactify_domain}"
+    ]
+    expose_headers = ["*"]
+    max_age       = 3600
+  }
 }
 
+# API-Gateway: Mapping
+resource "aws_apigatewayv2_api_mapping" "contact" {
+  api_id      = aws_apigatewayv2_api.contact.id
+  domain_name = aws_apigatewayv2_domain_name.contact.id
+  stage       = aws_apigatewayv2_stage.contact.id
+}
+
+# API-Gateway: Stage
 resource "aws_apigatewayv2_stage" "contact" {
   api_id = aws_apigatewayv2_api.contact.id
 
@@ -399,12 +367,14 @@ resource "aws_apigatewayv2_route" "contact" {
   target    = "integrations/${aws_apigatewayv2_integration.contact.id}"
 }
 
+# API-Gateway: Cloudwatch Log
 resource "aws_cloudwatch_log_group" "api_gw" {
   name = "/aws/api_gw/${aws_apigatewayv2_api.contact.name}"
 
   retention_in_days = 7
 }
 
+# API-Gateway: Lambda Permission
 resource "aws_lambda_permission" "api_gw" {
   statement_id  = "AllowExecutionFromAPIGateway"
   action        = "lambda:InvokeFunction"
@@ -460,7 +430,7 @@ resource "aws_s3_bucket_acl" "lambda_bucket" {
 # Package the Lambda function code
 data "archive_file" "lambda-contact-function" {
   type        = "zip"
-  source_file = "./lambda/contact.py"
+  source_dir = "./lambda-package"
   output_path = "./lambda/function.zip"
 }
 # Upload archive to S3
@@ -543,7 +513,7 @@ resource "aws_iam_role_policy" "lambda_ses_policy" {
       Effect = "Allow"
       Action = ["ses:SendEmail", "ses:SendRawEmail"]
       Resource = [
-        aws_sesv2_domain_identity.cactify_domain.arn,
+        aws_ses_domain_identity.cactify_domain.arn,
         aws_sesv2_configuration_set.main.arn
       ]
     }]
