@@ -488,21 +488,41 @@ resource "aws_iam_role_policy_attachment" "lambda_cloudwatch_policy" {
 }
 
 # Policy provides permissions to send emails with ses
+# resource "aws_iam_role_policy" "lambda_ses_policy" {
+#   name = "lambda-send-with-ses"
+#   role = aws_iam_role.lambda_exec.id
+#   policy = jsonencode({
+#     Version = "2012-10-17"
+#     Statement = [{
+#       Effect = "Allow"
+#       Action = ["ses:SendEmail", "ses:SendRawEmail"]
+#       Resource = [
+#         aws_ses_domain_identity.cactify_domain.arn,
+#       ]
+#     }]
+#   })
+# }
 resource "aws_iam_role_policy" "lambda_ses_policy" {
   name = "lambda-send-with-ses"
   role = aws_iam_role.lambda_exec.id
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
       Effect = "Allow"
-      Action = ["ses:SendEmail", "ses:SendRawEmail"]
-      Resource = [
-        aws_ses_domain_identity.cactify_domain.arn,
+      Action = [
+        "ses:SendEmail",
+        "ses:SendRawEmail"
       ]
+      Resource = "*"
+      Condition = {
+        StringEquals = {
+          "ses:FromAddress" = "contact@cactify.florianjanssens.de"
+        }
+      }
     }]
   })
 }
-
 
 # ----------------------------------------------------------------
 # AWS SES

@@ -6,11 +6,11 @@ Also returns a HTTP-response to the API-Gateway.
 """
 
 import json
-import boto3
-from botocore.exceptions import ClientError
 import logging
 
-from email_validator import validate_email, EmailNotValidError
+import boto3
+from botocore.exceptions import ClientError
+from email_validator import EmailNotValidError, validate_email
 
 # create SES client
 SES = boto3.client("ses", region_name="us-east-1")
@@ -70,7 +70,7 @@ def lambda_handler(event, context):
             "headers": {"Content-Type": "application/json"},
             "body": json.dumps(
                 {
-                    "error": f"Your message was sent to our service, but the was an error sending your confirmation email. Try again if you don't hear from us in the next days."
+                    "error": f"Your message was sent to our service, but sending a confirmation to you failed."
                 }
             ),
         }
@@ -126,10 +126,10 @@ def send_emails(data: dict):
     """Send the message to the service-team and the user confirmation email."""
     # write different subjects and messages for service-team and user
     service_subject = f"Service request from {data.get('email')}"
-    service_message = f"This message was sent from {data.get('first_name')} {data.get('last_name')} via the contact-formular at cactify.florianjanssens.de.\n Respond to {data.get('email')}.\n Message:\n{data.get('message')}"
+    service_message = f"This message was sent from {data.get('first_name')} {data.get('last_name')} via the contact-formular at cactify.florianjanssens.de.\nRespond to {data.get('email')}.\nMessage:\n \n{data.get('message')}"
 
     user_subject = f"Your service request at cactify"
-    user_message = f"Hello {data.get('first_name')} {data.get('last_name')},\n Your message was sent to our cactify-service-team. Thank you for getting in touch with us.\n We will answer shortly.\n Your cactify-team.\n\n Your message: {data.get('message')}"
+    user_message = f"Hello {data.get('first_name')} {data.get('last_name')},\n Your message was sent to our cactify-service-team. Thank you for getting in touch with us.\n We will answer shortly.\n \nYour cactify-team.\n\n Your message: {data.get('message')}"
 
     try:
         # service-team email
@@ -141,7 +141,7 @@ def send_emails(data: dict):
                 "Subject": {"Data": f"{service_subject}"},
                 "Body": {"Text": {"Data": f"{service_message}"}},
             },
-            ConfigurationSetName="my-cactify-config-set"
+            ConfigurationSetName="my-cactify-config-set",
         )
     except ClientError as e:
         logging.error(
@@ -158,7 +158,7 @@ def send_emails(data: dict):
                 "Subject": {"Data": f"{user_subject}"},
                 "Body": {"Text": {"Data": f"{user_message}"}},
             },
-            ConfigurationSetName="my-cactify-config-set"
+            ConfigurationSetName="my-cactify-config-set",
         )
         logging.info(f"Emails sent succesfully")
         return 0
