@@ -415,6 +415,7 @@ data "archive_file" "lambda-contact-function" {
   source_dir  = "./lamb-funct-package"
   output_path = "./lambda/function.zip"
 }
+
 # Upload archive to S3
 resource "aws_s3_object" "lambda-contact-function" {
   bucket = aws_s3_bucket.lambda_bucket.id
@@ -440,6 +441,7 @@ resource "aws_lambda_function" "contact" {
 
   role = aws_iam_role.lambda_exec.arn
 
+  timeout = 15
 
   environment {
     variables = {
