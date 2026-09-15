@@ -238,7 +238,7 @@ resource "aws_cloudwatch_log_delivery_source" "cactify_distribution" {
 
 # S3 Log Bucket
 resource "aws_s3_bucket" "cactify-logging" {
-  bucket        = "cactify-logging-bucket"
+  bucket        = format("cactify-logging-bucket-%s-%s-an", data.aws_caller_identity.current.account_id, data.aws_region.current.name)
   force_destroy = true
 }
 
@@ -268,7 +268,7 @@ resource "aws_cloudwatch_log_delivery" "cactify_distribution" {
 
 # API-Gateway: Domain Name
 resource "aws_apigatewayv2_domain_name" "contact" {
-  domain_name = "api.cactify.florianjanssens.de"
+  domain_name = "api.${var.domain_config.subdomain}.${var.domain_config.main_domain}"
 
   domain_name_configuration {
     certificate_arn = aws_acm_certificate.cactify_cf.arn
@@ -277,7 +277,7 @@ resource "aws_apigatewayv2_domain_name" "contact" {
   }
 }
 
-# Route53 Record for API-Gateway -> api.cactify.florianjanssens.de/contact
+# Route53 Record for API-Gateway -> api.cactify.DOMAIN/contact
 resource "aws_route53_record" "api_gateway" {
   name    = aws_apigatewayv2_domain_name.contact.domain_name
   type    = "A"
@@ -375,14 +375,14 @@ resource "aws_lambda_permission" "api_gw" {
 }
 
 # API-Gateway: Deployment
-resource "aws_apigatewayv2_deployment" "contact" {
-  api_id      = aws_apigatewayv2_api.contact.id
-  description = "Contact deployment"
+# resource "aws_apigatewayv2_deployment" "contact" {
+#   api_id      = aws_apigatewayv2_api.contact.id
+#   description = "Contact deployment"
 
-  lifecycle {
-    create_before_destroy = true
-  }
-}
+#   lifecycle {
+#     create_before_destroy = true
+#   }
+# }
 # ----------------------------------------------------------------
 # LAMBDA 
 # ----------------------------------------------------------------
@@ -496,7 +496,6 @@ resource "aws_iam_role_policy" "lambda_ses_policy" {
       Action = ["ses:SendEmail", "ses:SendRawEmail"]
       Resource = [
         aws_ses_domain_identity.cactify_domain.arn,
-        aws_sesv2_configuration_set.main.arn
       ]
     }]
   })
@@ -506,17 +505,26 @@ resource "aws_iam_role_policy" "lambda_ses_policy" {
 # ----------------------------------------------------------------
 # AWS SES
 # ----------------------------------------------------------------
+
+# Für den/die Tester*in dieser Software: Die Email-Adresse service@florianjanssens.de wurde hier verwendet. Wenn Sie Ihre eigene Domain nutzen,
+# wird Amazon SES versuchen, service@DOMAIN zu verifizieren. Bitte nutzen Sie hier eine Adresse, auf die Sie zugriff haben. 
+# Diese Mail-Adresse ist die des Service-Teams der fiktiven Cactify-App. 
 resource "aws_sesv2_email_identity" "service" {
-  email_identity = "service@florianjanssens.de"
+  email_identity = "service@${var.domain_config.main_domain}"
 }
 
 resource "aws_ses_domain_identity" "cactify_domain" {
-  domain = "cactify.florianjanssens.de"
+  domain = local.cactify_domain
+}
+
+resource "aws_sesv2_email_identity" "test" {
+  email_identity = var.test_email_for_ses
+  
 }
 
 resource "aws_route53_record" "cactify_amazonses_verification_record" {
-  zone_id = "Z06874663LA9REHRJ0CLV"
-  name    = "_amazonses.cactify.florianjanssens.de"
+  zone_id = data.aws_route53_zone.cactify_domain.zone_id
+  name    = "_amazonses.${var.domain_config.subdomain}.${var.domain_config.main_domain}"
   type    = "TXT"
   ttl     = "600"
   records = [aws_ses_domain_identity.cactify_domain.verification_token]
