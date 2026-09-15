@@ -519,7 +519,6 @@ resource "aws_ses_domain_identity" "cactify_domain" {
 
 resource "aws_sesv2_email_identity" "test" {
   email_identity = var.test_email_for_ses
-
 }
 
 resource "aws_route53_record" "cactify_amazonses_verification_record" {
