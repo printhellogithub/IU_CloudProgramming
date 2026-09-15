@@ -23,7 +23,7 @@ data "aws_route53_zone" "cactify_domain" {
 # ----------------------------------------------------------------
 # S3 Bucket 
 resource "aws_s3_bucket" "cactify-website-content" {
-  bucket = format("cactify-website-content-%s-%s-an", data.aws_caller_identity.current.account_id, data.aws_region.current.name)
+  bucket = format("cactify-website-content-%s-%s", data.aws_caller_identity.current.account_id, data.aws_region.current.name)
   tags = {
     Name = var.s3_website_content_bucket_name
   }
@@ -238,7 +238,7 @@ resource "aws_cloudwatch_log_delivery_source" "cactify_distribution" {
 
 # S3 Log Bucket
 resource "aws_s3_bucket" "cactify-logging" {
-  bucket        = format("cactify-logging-bucket-%s-%s-an", data.aws_caller_identity.current.account_id, data.aws_region.current.name)
+  bucket        = format("cactify-logging-bucket-%s-%s", data.aws_caller_identity.current.account_id, data.aws_region.current.name)
   force_destroy = true
 }
 
@@ -271,7 +271,7 @@ resource "aws_apigatewayv2_domain_name" "contact" {
   domain_name = "api.${var.domain_config.subdomain}.${var.domain_config.main_domain}"
 
   domain_name_configuration {
-    certificate_arn = aws_acm_certificate.cactify_cf.arn
+    certificate_arn = aws_acm_certificate_validation.cactify_cf.certificate_arn
     endpoint_type   = "REGIONAL"
     security_policy = "TLS_1_2"
   }
@@ -388,7 +388,7 @@ resource "aws_lambda_permission" "api_gw" {
 # ----------------------------------------------------------------
 # S3 Bucket for Lambda Function
 resource "aws_s3_bucket" "lambda_bucket" {
-  bucket = format("cactify-lambda-bucket-%s-%s-an", data.aws_caller_identity.current.account_id, data.aws_region.current.name)
+  bucket = format("cactify-lambda-bucket-%s-%s", data.aws_caller_identity.current.account_id, data.aws_region.current.name)
 
   tags = {
     Name = var.s3_lambda_bucket_name
@@ -412,7 +412,7 @@ resource "aws_s3_bucket_acl" "lambda_bucket" {
 # Package the Lambda function code
 data "archive_file" "lambda-contact-function" {
   type        = "zip"
-  source_dir  = "./lambda-package"
+  source_dir  = "./lamb-funct-package"
   output_path = "./lambda/function.zip"
 }
 # Upload archive to S3
@@ -519,7 +519,7 @@ resource "aws_ses_domain_identity" "cactify_domain" {
 
 resource "aws_sesv2_email_identity" "test" {
   email_identity = var.test_email_for_ses
-  
+
 }
 
 resource "aws_route53_record" "cactify_amazonses_verification_record" {
@@ -553,6 +553,6 @@ resource "aws_sesv2_configuration_set_event_destination" "main" {
     }
 
     enabled              = true
-    matching_event_types = ["send", "bounce", "complaint", "delivery", "reject"]
+    matching_event_types = ["SEND", "BOUNCE", "COMPLAINT", "DELIVERY", "REJECT"]
   }
 }

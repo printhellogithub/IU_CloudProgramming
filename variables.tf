@@ -30,7 +30,7 @@ variable "domain_config" {
 # im Sandbox-Modus Emails versendet werden. Um die Email-Adresse zu verifizieren, folgen Sie den Anweisungen in der Bestätigungs-Email von Amazon SES.
 # Ist Ihre Email-Adresse verifiziert, können Sie diese zum Testen im Kontaktformular der gehosteten Website nutzen.
 variable "test_email_for_ses" {
-  type = string
+  type        = string
   description = "Verified SES Test Email for Sandbox Mode."
-  default = "contact@florianjanssens.de"
+  default     = "contact@florianjanssens.de"
 }
