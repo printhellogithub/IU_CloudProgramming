@@ -115,7 +115,7 @@ resource "aws_s3_object" "Kaktus" {
   content_type = "image/svg+xml"
 }
 # Error 403
-resource "aws_s3_object" "403" {
+resource "aws_s3_object" "custom_403" {
   bucket       = aws_s3_bucket.cactify-website-content.bucket
   key          = "403.html"
   source       = "./src/403.html"
@@ -123,7 +123,7 @@ resource "aws_s3_object" "403" {
   content_type = "text/html"
 }
 # Error 404
-resource "aws_s3_object" "404" {
+resource "aws_s3_object" "custom_404" {
   bucket       = aws_s3_bucket.cactify-website-content.bucket
   key          = "404.html"
   source       = "./src/404.html"
@@ -366,7 +366,7 @@ resource "aws_apigatewayv2_stage" "contact" {
   }
   # Um Kosten durch Missbrauch auszuschließen oder zu reduzieren
   route_settings {
-    route_key              = aws_apigatewayv2_route.contact
+    route_key              = aws_apigatewayv2_route.contact.route_key
     throttling_burst_limit = 20
     throttling_rate_limit  = 10
   }
