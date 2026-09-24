@@ -220,12 +220,14 @@ resource "aws_cloudfront_distribution" "cactify_distribution" {
   }
 
   custom_error_response {
-    error_code         = "403"
+    error_code         = 403
     response_page_path = "/403.html"
+    response_code      = 403
   }
   custom_error_response {
-    error_code         = "404"
+    error_code         = 404
     response_page_path = "/404.html"
+    response_code      = 404
   }
 
   tags = {
