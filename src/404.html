@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>404 | Cactify</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            color: #f8f3d0;
+            background: radial-gradient(circle at top, #005a35 0%, #00482b 45%, #00351f 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            padding: clamp(2rem, 5vw, 4rem) 1.5rem 2rem;
+            color: #ffe000;
+        }
+
+        .hero-content {
+            max-width: 1000px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 0.8fr;
+            align-items: center;
+            gap: clamp(2rem, 5vw, 4rem);
+        }
+
+        .hero-copy {
+            text-align: left;
+        }
+
+        .logo-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .logo-container img {
+            width: min(280px, 65vw);
+            height: auto;
+            filter: drop-shadow(0 28px 40px rgba(0, 0, 0, 0.18));
+        }
+
+        h1 {
+            font-size: clamp(4.5rem, 12vw, 8rem);
+            margin-bottom: 0.4rem;
+            font-family: 'Cooper Black', 'Arial Rounded MT Bold', 'Trebuchet MS', sans-serif;
+            font-weight: 800;
+            line-height: 0.95;
+            color: #ffd800;
+        }
+
+        h2 {
+            font-size: clamp(1.5rem, 3vw, 2.2rem);
+            margin-bottom: 1rem;
+            color: #fff2bf;
+        }
+
+        .hero-copy p {
+            max-width: 30rem;
+            margin-bottom: 2rem;
+            font-size: clamp(1.05rem, 2vw, 1.3rem);
+            color: #f8f3d0;
+        }
+
+        .home-button {
+            display: inline-block;
+            padding: 0.95rem 1.4rem;
+            border-radius: 999px;
+            background: #ffe000;
+            color: #00482b;
+            font-weight: 800;
+            text-decoration: none;
+            box-shadow: 0 18px 30px rgba(0, 0, 0, 0.2);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .home-button:hover,
+        .home-button:focus-visible {
+            transform: translateY(-1px);
+            box-shadow: 0 22px 36px rgba(0, 0, 0, 0.24);
+        }
+
+        main {
+            flex: 1;
+            max-width: 1000px;
+            width: calc(100% - 4rem);
+            margin: 0 auto 2rem;
+        }
+
+        .error-panel {
+            background: rgba(247, 241, 205, 0.98);
+            border: 2px solid rgba(255, 224, 0, 0.55);
+            border-top: 10px solid #ffe000;
+            border-radius: 24px;
+            box-shadow: 0 28px 60px rgba(0, 0, 0, 0.22);
+            padding: clamp(1.5rem, 4vw, 2.25rem);
+            color: #183d2b;
+            text-align: center;
+        }
+
+        .error-panel p {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #355344;
+        }
+
+        footer {
+            text-align: center;
+            padding: 1.5rem;
+            background-color: #00482b;
+            color: #ffd800;
+        }
+
+        @media (max-width: 768px) {
+            .hero-content {
+                grid-template-columns: 1fr;
+            }
+
+            .hero-copy {
+                text-align: center;
+            }
+
+            .logo-container {
+                order: -1;
+            }
+
+            main {
+                width: calc(100% - 2rem);
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="hero-content">
+            <div class="hero-copy">
+                <h1>404</h1>
+                <h2>Page not found</h2>
+                <p>The page you are looking for does not exist.</p>
+                <a class="home-button" href="index.html">Back to Cactify</a>
+            </div>
+            <div class="logo-container">
+                <img src="Kaktus_V1.svg" alt="Cactify Logo">
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <section class="error-panel">
+            <p>Let us help you find your way back to your plants.</p>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 Cactify (Florian Janssens, IU Internationale Hochschule). All rights reserved.</p>
+    </footer>
+</body>
+</html>

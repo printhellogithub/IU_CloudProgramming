@@ -114,6 +114,22 @@ resource "aws_s3_object" "Kaktus" {
   etag         = filemd5("./src/Kaktus_V1.svg")
   content_type = "image/svg+xml"
 }
+# Error 403
+resource "aws_s3_object" "403" {
+  bucket       = aws_s3_bucket.cactify-website-content.bucket
+  key          = "403.html"
+  source       = "./src/403.html"
+  etag         = filemd5("./src/403.html")
+  content_type = "text/html"
+}
+# Error 404
+resource "aws_s3_object" "404" {
+  bucket       = aws_s3_bucket.cactify-website-content.bucket
+  key          = "404.html"
+  source       = "./src/404.html"
+  etag         = filemd5("./src/404.html")
+  content_type = "text/html"
+}
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
 # ACM (Certificate Manager) + DNS-Validierung
@@ -184,7 +200,6 @@ resource "aws_cloudfront_distribution" "cactify_distribution" {
     max_ttl                = 86400
   }
 
-
   # price_class_100 ist nicht weltweit: Nur United States, Mexico, and Canada, Europe, Israel, and Türkiye
   # Für eine weltweite Abdeckung wäre "PriceClass_All" erforderlich. 
   # Diese Einstellung wurde zum Schutz des Studenten im Rahmen des Projektes auf "PriceClass_100" gestellt.
@@ -197,14 +212,25 @@ resource "aws_cloudfront_distribution" "cactify_distribution" {
     }
   }
 
+  viewer_certificate {
+    cloudfront_default_certificate = false
+    acm_certificate_arn            = aws_acm_certificate_validation.cactify_cf.certificate_arn
+    ssl_support_method             = "sni-only"
+    minimum_protocol_version       = "TLSv1.2_2021"
+  }
+
+  custom_error_response {
+    error_code         = "403"
+    response_page_path = "/403.html"
+  }
+  custom_error_response {
+    error_code         = "404"
+    response_page_path = "/404.html"
+  }
+
   tags = {
     Environment = "production"
 
-  }
-
-  viewer_certificate {
-    acm_certificate_arn = aws_acm_certificate_validation.cactify_cf.certificate_arn
-    ssl_support_method  = "sni-only"
   }
 }
 # ----------------------------------------------------------------
@@ -337,6 +363,12 @@ resource "aws_apigatewayv2_stage" "contact" {
       responseLength          = "$context.responseLength"
       integrationErrorMessage = "$context.integrationErrorMessage"
     })
+  }
+  # Um Kosten durch Missbrauch auszuschließen oder zu reduzieren
+  route_settings {
+    route_key              = aws_apigatewayv2_route.contact
+    throttling_burst_limit = 20
+    throttling_rate_limit  = 10
   }
 }
 
@@ -487,21 +519,6 @@ resource "aws_iam_role_policy_attachment" "lambda_cloudwatch_policy" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
-# Policy provides permissions to send emails with ses
-# resource "aws_iam_role_policy" "lambda_ses_policy" {
-#   name = "lambda-send-with-ses"
-#   role = aws_iam_role.lambda_exec.id
-#   policy = jsonencode({
-#     Version = "2012-10-17"
-#     Statement = [{
-#       Effect = "Allow"
-#       Action = ["ses:SendEmail", "ses:SendRawEmail"]
-#       Resource = [
-#         aws_ses_domain_identity.cactify_domain.arn,
-#       ]
-#     }]
-#   })
-# }
 resource "aws_iam_role_policy" "lambda_ses_policy" {
   name = "lambda-send-with-ses"
   role = aws_iam_role.lambda_exec.id

@@ -135,7 +135,7 @@ def send_emails(data: dict):
         # service-team email
         logging.debug(f"Trying to send Email to service")
         SES.send_email(
-            Source="contact@cactify.florianjanssens.de",
+            Source="no-reply@cactify.florianjanssens.de",
             Destination={"ToAddresses": ["service@florianjanssens.de"]},
             Message={
                 "Subject": {"Data": f"{service_subject}"},
@@ -152,7 +152,7 @@ def send_emails(data: dict):
         # user confirmation email
         logging.debug(f"Trying to send Email to user")
         SES.send_email(
-            Source="contact@cactify.florianjanssens.de",
+            Source="no-reply@cactify.florianjanssens.de",
             Destination={"ToAddresses": [str(data.get("email"))]},
             Message={
                 "Subject": {"Data": f"{user_subject}"},
