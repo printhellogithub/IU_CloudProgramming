@@ -132,26 +132,26 @@ resource "aws_s3_object" "custom_404" {
 }
 # favicon.ico
 resource "aws_s3_object" "favicon" {
-  bucket = aws_s3_bucket.cactify-website-content.bucket
-  key = "favicon.ico"
-  source = "./src/favicon.ico"
-  etag = filemd5("./src/favicon.ico")
+  bucket       = aws_s3_bucket.cactify-website-content.bucket
+  key          = "favicon.ico"
+  source       = "./src/favicon.ico"
+  etag         = filemd5("./src/favicon.ico")
   content_type = "image/x-icon"
 }
 # favicon-16x16
 resource "aws_s3_object" "favicon-16x16" {
-  bucket = aws_s3_bucket.cactify-website-content.bucket
-  key = "favicon-16x16.png"
-  source = "./src/favicon-16x16.png"
-  etag = filemd5("./src/favicon-16x16.png")
+  bucket       = aws_s3_bucket.cactify-website-content.bucket
+  key          = "favicon-16x16.png"
+  source       = "./src/favicon-16x16.png"
+  etag         = filemd5("./src/favicon-16x16.png")
   content_type = "image/png"
 }
 # favicon-32x32
 resource "aws_s3_object" "favicon-32x32" {
-  bucket = aws_s3_bucket.cactify-website-content.bucket
-  key = "favicon-32x32.png"
-  source = "./src/favicon-32x32.png"
-  etag = filemd5("./src/favicon-32x32.png")
+  bucket       = aws_s3_bucket.cactify-website-content.bucket
+  key          = "favicon-32x32.png"
+  source       = "./src/favicon-32x32.png"
+  etag         = filemd5("./src/favicon-32x32.png")
   content_type = "image/png"
 }
 # site.webmanifest
@@ -164,26 +164,26 @@ resource "aws_s3_object" "site_webmanifest" {
 }
 # apple-touch-icon
 resource "aws_s3_object" "apple-touch-icon" {
-  bucket = aws_s3_bucket.cactify-website-content.bucket
-  key = "apple-touch-icon.png"
-  source = "./src/apple-touch-icon.png"
-  etag = filemd5("./src/apple-touch-icon.png")
+  bucket       = aws_s3_bucket.cactify-website-content.bucket
+  key          = "apple-touch-icon.png"
+  source       = "./src/apple-touch-icon.png"
+  etag         = filemd5("./src/apple-touch-icon.png")
   content_type = "image/png"
 }
 # android-chrome-192x192
 resource "aws_s3_object" "android-chrome-192x192" {
-  bucket = aws_s3_bucket.cactify-website-content.bucket
-  key = "android-chrome-192x192.png"
-  source = "./src/android-chrome-192x192.png"
-  etag = filemd5("./src/android-chrome-192x192.png")
+  bucket       = aws_s3_bucket.cactify-website-content.bucket
+  key          = "android-chrome-192x192.png"
+  source       = "./src/android-chrome-192x192.png"
+  etag         = filemd5("./src/android-chrome-192x192.png")
   content_type = "image/png"
 }
 # android-chrome-512x512
 resource "aws_s3_object" "android-chrome-512x512" {
-  bucket = aws_s3_bucket.cactify-website-content.bucket
-  key = "android-chrome-512x512.png"
-  source = "./src/android-chrome-512x512.png"
-  etag = filemd5("./src/android-chrome-512x512.png")
+  bucket       = aws_s3_bucket.cactify-website-content.bucket
+  key          = "android-chrome-512x512.png"
+  source       = "./src/android-chrome-512x512.png"
+  etag         = filemd5("./src/android-chrome-512x512.png")
   content_type = "image/png"
 }
 
