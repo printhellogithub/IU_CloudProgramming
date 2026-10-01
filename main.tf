@@ -6,7 +6,7 @@ provider "aws" {
     tags = {
       Application = "Cactify-Website+Contact"
       Environment = "production"
-      }
+    }
   }
 }
 
