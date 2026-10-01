@@ -233,7 +233,7 @@ resource "aws_cloudfront_distribution" "cactify_distribution" {
 
   enabled             = true
   is_ipv6_enabled     = true
-  comment             = "Cloudfront Distribution for cactify.florianjanssens.de"
+  comment             = "Cloudfront Distribution for ${var.domain_config.subdomain}.${var.domain_config.main_domain}"
   default_root_object = "index.html"
 
   aliases = ["${local.cactify_domain}", "www.${local.cactify_domain}"]
@@ -578,6 +578,13 @@ resource "aws_iam_role_policy_attachment" "lambda_cloudwatch_policy" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
+# Policy allowing to send Emails from noreply@cactify.florianjanssens.de
+
+# Für den/die Tester*in dieser Software: 
+# Die Email-Adresse no-reply@cactify.florianjanssens.de wurde hier als Absendeadresse für Amazon SES verwendet. 
+# Wenn Sie Ihre eigene Domain verwenden (in variables.tf anpassen), wird no-reply@cactify.DOMAIN verwendet werden. 
+# Bitte ändern Sie auch in lamb-funct-package/contact.py die globalen Variablen entsprechend.
+
 resource "aws_iam_role_policy" "lambda_ses_policy" {
   name = "lambda-send-with-ses"
   role = aws_iam_role.lambda_exec.id
@@ -593,7 +600,7 @@ resource "aws_iam_role_policy" "lambda_ses_policy" {
       Resource = "*"
       Condition = {
         StringEquals = {
-          "ses:FromAddress" = "no-reply@cactify.florianjanssens.de"
+          "ses:FromAddress" = "no-reply@${var.domain_config.subdomain}.${var.domain_config.main_domain}"
         }
       }
     }]
@@ -604,9 +611,11 @@ resource "aws_iam_role_policy" "lambda_ses_policy" {
 # AWS SES
 # ----------------------------------------------------------------
 
-# Für den/die Tester*in dieser Software: Die Email-Adresse service@florianjanssens.de wurde hier verwendet. Wenn Sie Ihre eigene Domain nutzen,
-# wird Amazon SES versuchen, service@DOMAIN zu verifizieren. Bitte nutzen Sie hier eine Adresse, auf die Sie zugriff haben. 
-# Diese Mail-Adresse ist die des Service-Teams der fiktiven Cactify-App. 
+# Für den/die Tester*in dieser Software: Die Email-Adresse service@florianjanssens.de wurde hier 
+# als Postfach des Service-Teams der fiktiven Cactify-App verwendet. 
+# Wenn Sie Ihre eigene Domain nutzen, wird Amazon SES versuchen, service@DOMAIN zu verifizieren. 
+# Bitte nutzen Sie hier eine Adresse, auf die Sie zugriff haben. 
+
 resource "aws_sesv2_email_identity" "service" {
   email_identity = "service@${var.domain_config.main_domain}"
 }

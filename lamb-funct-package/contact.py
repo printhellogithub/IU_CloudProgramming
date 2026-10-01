@@ -22,6 +22,15 @@ logging.basicConfig(
 )
 
 
+# Für den/die Tester*in dieser Software:
+# Bitte ändern Sie hier die MAIN_DOMAIN, wie in variables.tf, zu einer von Ihnen bei Route 53 registrierten Domain.
+
+# GLOBALE VARIABLEN
+MAIN_DOMAIN = "florianjanssens.de"
+SUBDOMAIN = "cactify"
+NO_REPLY = f"no-reply@{SUBDOMAIN}.{MAIN_DOMAIN}"
+
+
 def lambda_handler(event, context):
     """Process the contact form request and return an API response."""
     logging.info(f"START of Lambda_Handler")
@@ -126,7 +135,7 @@ def send_emails(data: dict):
     """Send the message to the service-team and the user confirmation email."""
     # write different subjects and messages for service-team and user
     service_subject = f"Service request from {data.get('email')}"
-    service_message = f"This message was sent from {data.get('first_name')} {data.get('last_name')} via the contact-formular at cactify.florianjanssens.de.\nRespond to {data.get('email')}.\nMessage:\n \n{data.get('message')}"
+    service_message = f"This message was sent from {data.get('first_name')} {data.get('last_name')} via the contact-formular at {SUBDOMAIN}.{MAIN_DOMAIN}.\nRespond to {data.get('email')}.\nMessage:\n \n{data.get('message')}"
 
     user_subject = f"Your service request at cactify"
     user_message = f"Hello {data.get('first_name')} {data.get('last_name')},\n Your message was sent to our cactify-service-team. Thank you for getting in touch with us.\n We will answer shortly.\n \nYour cactify-team.\n\n Your message: {data.get('message')}"
@@ -135,8 +144,8 @@ def send_emails(data: dict):
         # service-team email
         logging.debug(f"Trying to send Email to service")
         SES.send_email(
-            Source="no-reply@cactify.florianjanssens.de",
-            Destination={"ToAddresses": ["service@florianjanssens.de"]},
+            Source=NO_REPLY,
+            Destination={"ToAddresses": [f"service@{MAIN_DOMAIN}"]},
             Message={
                 "Subject": {"Data": f"{service_subject}"},
                 "Body": {"Text": {"Data": f"{service_message}"}},
@@ -152,7 +161,7 @@ def send_emails(data: dict):
         # user confirmation email
         logging.debug(f"Trying to send Email to user")
         SES.send_email(
-            Source="no-reply@cactify.florianjanssens.de",
+            Source=NO_REPLY,
             Destination={"ToAddresses": [str(data.get("email"))]},
             Message={
                 "Subject": {"Data": f"{user_subject}"},

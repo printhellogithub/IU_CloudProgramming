@@ -14,6 +14,7 @@ variable "s3_lambda_bucket_name" {
 # Für Testzwecke muss eine eigene bei Route53 registrierte/verwaltete Domain verwendet werden. 
 # Diese sollte hier als main_domain Variable angegeben werden.
 # Für dieses Projekt wird eine Subdomain nach dem Schema cactify.DOMAIN durch die Terraform-Konfiguration in Route53 angelegt. 
+# Bitte ändern Sie auch die Globalen Variablen in lamb-funct-package/contact.py
 variable "domain_config" {
   type = object({
     main_domain = string
