@@ -323,19 +323,19 @@ resource "aws_cloudwatch_log_delivery_source" "cactify_distribution" {
   resource_arn = aws_cloudfront_distribution.cactify_distribution.arn
 }
 
-# S3 Log Bucket
-resource "aws_s3_bucket" "cactify-logging" {
-  bucket        = format("cactify-logging-bucket-%s-%s", data.aws_caller_identity.current.account_id, data.aws_region.current.name)
-  force_destroy = true
-}
+# # S3 Log Bucket
+# resource "aws_s3_bucket" "cactify-logging" {
+#   bucket        = format("cactify-logging-bucket-%s-%s", data.aws_caller_identity.current.account_id, data.aws_region.current.name)
+#   force_destroy = true
+# }
 
 # Log Delivery Destination
 resource "aws_cloudwatch_log_delivery_destination" "cactify_distribution" {
-  name          = "s3-destination"
-  output_format = "parquet"
+  name          = "cloudfront-access-logs"
+  output_format = "json"
 
   delivery_destination_configuration {
-    destination_resource_arn = "${aws_s3_bucket.cactify-logging.arn}/prefix"
+    destination_resource_arn = aws_cloudwatch_log_group.cloudfront-cactify-dist.arn
   }
 }
 
@@ -345,10 +345,31 @@ resource "aws_cloudwatch_log_delivery" "cactify_distribution" {
   delivery_source_name     = aws_cloudwatch_log_delivery_source.cactify_distribution.name
   delivery_destination_arn = aws_cloudwatch_log_delivery_destination.cactify_distribution.arn
 
-  s3_delivery_configuration {
-    suffix_path = format("/%s/%s/{yyyy}/{MM}/{dd}/{HH}", data.aws_caller_identity.current.account_id, aws_cloudfront_distribution.cactify_distribution.id)
-  }
+  # s3_delivery_configuration {
+  #   suffix_path = format("/%s/%s/{yyyy}/{MM}/{dd}/{HH}", data.aws_caller_identity.current.account_id, aws_cloudfront_distribution.cactify_distribution.id)
+  # }
+  record_fields = [
+    "date",
+    "time",
+    "x-edge-location",
+    "c-ip",
+    "c-country",
+    "cs-method",
+    "sc-status",
+    "cs(Referer)",
+    "cs(User-Agent)",
+    "time-taken",
+    "viewer-request-log-data",
+    "viewer-response-log-data",
+  ]
 }
+
+resource "aws_cloudwatch_log_group" "cloudfront-cactify-dist" {
+  name = "/aws/cloudfront-cactify-dist/${aws_cloudfront_distribution.cactify_distribution.domain_name}"
+
+  retention_in_days = 7
+}
+
 # ----------------------------------------------------------------
 # API-GATEWAY
 # ----------------------------------------------------------------
@@ -576,7 +597,6 @@ resource "aws_iam_role_policy_attachment" "lambda_cloudwatch_policy" {
 }
 
 # Policy allowing to send Emails from noreply@cactify.florianjanssens.de
-
 # Für den/die Tester*in dieser Software: 
 # Die Email-Adresse no-reply@cactify.florianjanssens.de wurde hier als Absendeadresse für Amazon SES verwendet. 
 # Wenn Sie Ihre eigene Domain verwenden (in variables.tf anpassen), wird no-reply@cactify.DOMAIN verwendet werden. 
