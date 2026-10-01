@@ -593,7 +593,7 @@ resource "aws_iam_role_policy" "lambda_ses_policy" {
       Resource = "*"
       Condition = {
         StringEquals = {
-          "ses:FromAddress" = "contact@cactify.florianjanssens.de"
+          "ses:FromAddress" = "no-reply@cactify.florianjanssens.de"
         }
       }
     }]
