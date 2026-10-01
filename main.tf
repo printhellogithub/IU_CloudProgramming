@@ -1,6 +1,13 @@
 # PROVIDER
 provider "aws" {
   region = "us-east-1"
+
+  default_tags {
+    tags = {
+      Application = "Cactify-Website+Contact"
+      Environment = "production"
+      }
+  }
 }
 
 # LOCALS
@@ -286,11 +293,6 @@ resource "aws_cloudfront_distribution" "cactify_distribution" {
     response_page_path = "/404.html"
     response_code      = 404
   }
-
-  tags = {
-    Environment = "production"
-
-  }
 }
 # ----------------------------------------------------------------
 # Cloudfront Distribution Ende
@@ -539,11 +541,6 @@ resource "aws_lambda_function" "contact" {
       ENVIRONMENT = "production"
       LOG_LEVEL   = "info"
     }
-  }
-
-  tags = {
-    Environment = "production"
-    Application = "contact"
   }
 }
 
