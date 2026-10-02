@@ -604,7 +604,7 @@ resource "aws_iam_role_policy" "lambda_ses_policy" {
       Action = [
         "ses:SendEmail",
       ]
-      Resource = aws_ses_domain_identity.cactify_domain.arn
+      Resource = "*"
       Condition = {
         StringEquals = {
           "ses:FromAddress" = "no-reply@${var.domain_config.subdomain}.${var.domain_config.main_domain}"
