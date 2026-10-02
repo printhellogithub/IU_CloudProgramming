@@ -485,18 +485,9 @@ resource "aws_lambda_permission" "api_gw" {
   function_name = aws_lambda_function.contact.function_name
   principal     = "apigateway.amazonaws.com"
 
-  source_arn = "${aws_apigatewayv2_api.contact.execution_arn}/*/*"
+  source_arn = "${aws_apigatewayv2_api.contact.execution_arn}/${aws_apigatewayv2_stage.contact.name}/POST/contact"
 }
 
-# API-Gateway: Deployment
-# resource "aws_apigatewayv2_deployment" "contact" {
-#   api_id      = aws_apigatewayv2_api.contact.id
-#   description = "Contact deployment"
-
-#   lifecycle {
-#     create_before_destroy = true
-#   }
-# }
 # ----------------------------------------------------------------
 # LAMBDA 
 # ----------------------------------------------------------------
@@ -612,9 +603,8 @@ resource "aws_iam_role_policy" "lambda_ses_policy" {
       Effect = "Allow"
       Action = [
         "ses:SendEmail",
-        "ses:SendRawEmail"
       ]
-      Resource = "*"
+      Resource = aws_ses_domain_identity.cactify_domain.arn
       Condition = {
         StringEquals = {
           "ses:FromAddress" = "no-reply@${var.domain_config.subdomain}.${var.domain_config.main_domain}"
