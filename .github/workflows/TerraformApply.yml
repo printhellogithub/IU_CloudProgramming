@@ -1,3 +1,8 @@
+# Basiert auf https://github.com/actions/starter-workflows/blob/main/deployments/terraform.yml. 
+# Dieser Starter-Workflow wird angezeigt, wenn im "Actions"-Tab im GitHub-Repository auf "New Workflow" geklickt wird. Dort findet sich unter Deployment der Terraform Starter-Workflow.
+
+# Die OIDC-Verbindung zu AWS beruht auf der offiziellen Anleitung der AWS-Action Configure AWS Credentials: https://github.com/marketplace/actions/configure-aws-credentials-action-for-github-actions#quick-start-oidc-recommended
+
 name: 'Terraform Apply'
 
 on:
@@ -23,8 +28,8 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
 
-    # Connect to AWS via OICD
-    - name: Configure AWS Credentials (OICD)
+    # Connect to AWS via OIDC
+    - name: Configure AWS Credentials (OIDC)
       uses: aws-actions/configure-aws-credentials@v6.2.0
       with:
           role-to-assume: arn:aws:iam::666607745287:role/GitHub-Action_IU_CloudProgramming
@@ -32,7 +37,7 @@ jobs:
 
     # Install the latest version of Terraform CLI and configure the Terraform CLI configuration file with a Terraform Cloud user API token
     - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v3
+      uses: hashicorp/setup-terraform@v4.0.1
 
     # Checks that all Terraform configuration files adhere to a canonical format
     - name: Terraform Format

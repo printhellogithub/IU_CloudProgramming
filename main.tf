@@ -71,7 +71,6 @@ resource "aws_cloudfront_origin_access_control" "default" {
 # S3 IAM Bucket-Policy (Cloudfront Access)
 data "aws_iam_policy_document" "origin_bucket_policy" {
   statement {
-    # falls buggy, versuche "AllowCloudFrontServicePrincipalReadWrite"
     sid    = "AllowCloudFrontServicePrincipal"
     effect = "Allow"
 
@@ -323,12 +322,6 @@ resource "aws_cloudwatch_log_delivery_source" "cactify_distribution" {
   resource_arn = aws_cloudfront_distribution.cactify_distribution.arn
 }
 
-# # S3 Log Bucket
-# resource "aws_s3_bucket" "cactify-logging" {
-#   bucket        = format("cactify-logging-bucket-%s-%s", data.aws_caller_identity.current.account_id, data.aws_region.current.name)
-#   force_destroy = true
-# }
-
 # Log Delivery Destination
 resource "aws_cloudwatch_log_delivery_destination" "cactify_distribution" {
   name          = "cloudfront-access-logs"
@@ -345,9 +338,6 @@ resource "aws_cloudwatch_log_delivery" "cactify_distribution" {
   delivery_source_name     = aws_cloudwatch_log_delivery_source.cactify_distribution.name
   delivery_destination_arn = aws_cloudwatch_log_delivery_destination.cactify_distribution.arn
 
-  # s3_delivery_configuration {
-  #   suffix_path = format("/%s/%s/{yyyy}/{MM}/{dd}/{HH}", data.aws_caller_identity.current.account_id, aws_cloudfront_distribution.cactify_distribution.id)
-  # }
   record_fields = [
     "date",
     "time",
