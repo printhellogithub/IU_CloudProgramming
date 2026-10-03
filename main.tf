@@ -104,6 +104,14 @@ resource "aws_s3_object" "index" {
   etag         = filemd5("./src/index.html")
   content_type = "text/html"
 }
+#Index.html
+resource "aws_s3_object" "datenschutzhinweise" {
+  bucket       = aws_s3_bucket.cactify-website-content.bucket
+  key          = "datenschutzhinweise.html"
+  source       = "./src/datenschutzhinweise.html"
+  etag         = filemd5("./src/datenschutzhinweise.html")
+  content_type = "text/html"
+}
 # Download_Button_V1_green.svg
 resource "aws_s3_object" "Download_Button" {
   bucket       = aws_s3_bucket.cactify-website-content.bucket
