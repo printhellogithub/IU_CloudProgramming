@@ -342,15 +342,15 @@ resource "aws_cloudwatch_log_delivery" "cactify_distribution" {
     "date",
     "time",
     "x-edge-location",
+    "x-edge-result-type",
     "c-ip",
     "c-country",
     "cs-method",
     "sc-status",
+    "sc-bytes",
     "cs(Referer)",
     "cs(User-Agent)",
     "time-taken",
-    "viewer-request-log-data",
-    "viewer-response-log-data",
   ]
 }
 
