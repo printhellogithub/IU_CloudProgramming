@@ -355,7 +355,7 @@ resource "aws_cloudwatch_log_delivery" "cactify_distribution" {
 }
 
 resource "aws_cloudwatch_log_group" "cloudfront-cactify-dist" {
-  name = "/aws/cloudfront-cactify-dist/${aws_cloudfront_distribution.cactify_distribution.domain_name}"
+  name = "/aws/cloudfront-cactify-dist/cloudfront-access-logs"
 
   retention_in_days = 7
 }
