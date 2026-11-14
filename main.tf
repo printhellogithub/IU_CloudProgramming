@@ -619,7 +619,7 @@ resource "aws_iam_role_policy" "lambda_ses_policy" {
 # Für den/die Tester*in dieser Software: Die Email-Adresse service@florianjanssens.de wurde hier 
 # als Postfach des Service-Teams der fiktiven Cactify-App verwendet. 
 # Wenn Sie Ihre eigene Domain nutzen, wird Amazon SES versuchen, service@DOMAIN zu verifizieren. 
-# Bitte nutzen Sie hier eine Adresse, auf die Sie zugriff haben. 
+# Bitte nutzen Sie hier eine Adresse, auf die Sie Zugriff haben. 
 
 resource "aws_sesv2_email_identity" "service" {
   email_identity = "service@${var.domain_config.main_domain}"
