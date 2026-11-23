@@ -46,26 +46,27 @@ resource "aws_s3_bucket" "cactify-website-content" {
     Name = var.s3_website_content_bucket_name
   }
 }
-# S3 Bucket Ownership Controls
-resource "aws_s3_bucket_ownership_controls" "cactify-website-content" {
-  bucket = aws_s3_bucket.cactify-website-content.id
-  rule {
-    object_ownership = "BucketOwnerPreferred"
-  }
-}
-# S3 Bucket ACL (Access Controll Lists)
-resource "aws_s3_bucket_acl" "cactify-website-content" {
-  depends_on = [aws_s3_bucket_ownership_controls.cactify-website-content]
-
-  bucket = aws_s3_bucket.cactify-website-content.id
-  acl    = "private"
-}
 # S3 Bucket Versioning
 resource "aws_s3_bucket_versioning" "cactify-website-content" {
   bucket = aws_s3_bucket.cactify-website-content.id
   versioning_configuration {
     status = "Enabled"
   }
+}
+# S3 Bucket Ownership Controls
+resource "aws_s3_bucket_ownership_controls" "cactify-website-content" {
+  bucket = aws_s3_bucket.cactify-website-content.id
+  rule {
+    object_ownership = "BucketOwnerEnforced"
+  }
+}
+resource "aws_s3_bucket_public_access_block" "cactify-website-content" {
+  bucket = aws_s3_bucket.cactify-website-content.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
 }
 # S3 Cloudfront Origin Bucket Policy
 resource "aws_s3_bucket_policy" "origin_bucket_policy" {
@@ -97,6 +98,27 @@ data "aws_iam_policy_document" "origin_bucket_policy" {
     resources = [
       "${aws_s3_bucket.cactify-website-content.arn}/*",
     ]
+
+    condition {
+      test     = "StringEquals"
+      variable = "AWS:SourceArn"
+      values   = [aws_cloudfront_distribution.cactify_distribution.arn]
+    }
+  }
+  statement {
+    sid    = "AllowCloudFrontListBucketFor404"
+    effect = "Allow"
+
+    principals {
+      type        = "Service"
+      identifiers = ["cloudfront.amazonaws.com"]
+    }
+
+    actions = [
+      "s3:ListBucket",
+    ]
+
+    resources = [aws_s3_bucket.cactify-website-content.arn]
 
     condition {
       test     = "StringEquals"
@@ -223,22 +245,7 @@ resource "aws_s3_bucket" "cactify-failover-content" {
     Name = var.s3_failover_content_bucket_name
   }
 }
-# S3 Failover Bucket Ownership Controls
-resource "aws_s3_bucket_ownership_controls" "cactify-failover-content" {
-  provider = aws.eu_central_1
-  bucket   = aws_s3_bucket.cactify-failover-content.id
-  rule {
-    object_ownership = "BucketOwnerPreferred"
-  }
-}
-# S3 Failover Bucket ACL (Access Controll Lists)
-resource "aws_s3_bucket_acl" "cactify-failover-content" {
-  provider   = aws.eu_central_1
-  depends_on = [aws_s3_bucket_ownership_controls.cactify-failover-content]
 
-  bucket = aws_s3_bucket.cactify-failover-content.id
-  acl    = "private"
-}
 # S3 Failover Bucket Versioning
 resource "aws_s3_bucket_versioning" "cactify-failover-content" {
   provider = aws.eu_central_1
@@ -246,6 +253,22 @@ resource "aws_s3_bucket_versioning" "cactify-failover-content" {
   versioning_configuration {
     status = "Enabled"
   }
+}
+# S3 Failover Bucket Ownership Controls
+resource "aws_s3_bucket_ownership_controls" "cactify-failover-content" {
+  provider = aws.eu_central_1
+  bucket   = aws_s3_bucket.cactify-failover-content.id
+  rule {
+    object_ownership = "BucketOwnerEnforced"
+  }
+}
+resource "aws_s3_bucket_public_access_block" "cactify-failover-content" {
+  bucket = aws_s3_bucket.cactify-failover-content.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
 }
 # S3 Cloudfront Failover Origin Bucket Policy
 resource "aws_s3_bucket_policy" "failover_origin_bucket_policy" {
@@ -285,7 +308,29 @@ data "aws_iam_policy_document" "failover_origin_bucket_policy" {
       values   = [aws_cloudfront_distribution.cactify_distribution.arn]
     }
   }
+  statement {
+    sid    = "AllowCloudFrontListBucketFor404"
+    effect = "Allow"
+
+    principals {
+      type        = "Service"
+      identifiers = ["cloudfront.amazonaws.com"]
+    }
+
+    actions = [
+      "s3:ListBucket",
+    ]
+
+    resources = [aws_s3_bucket.cactify-failover-content.arn]
+
+    condition {
+      test     = "StringEquals"
+      variable = "AWS:SourceArn"
+      values   = [aws_cloudfront_distribution.cactify_distribution.arn]
+    }
+  }
 }
+
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 # Adding Website-Contents to S3-cactify-failover-content-Bucket
 #Index.html
