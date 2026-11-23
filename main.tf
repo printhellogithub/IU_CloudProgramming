@@ -264,7 +264,7 @@ resource "aws_s3_bucket_ownership_controls" "cactify-failover-content" {
 }
 resource "aws_s3_bucket_public_access_block" "cactify-failover-content" {
   provider = aws.eu_central_1
-  bucket = aws_s3_bucket.cactify-failover-content.id
+  bucket   = aws_s3_bucket.cactify-failover-content.id
 
   block_public_acls       = true
   block_public_policy     = true
