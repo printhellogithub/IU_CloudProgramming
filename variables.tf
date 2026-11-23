@@ -1,14 +1,4 @@
-variable "s3_website_content_bucket_name" {
-  description = "S3 Bucket containing website contents, origin of cloudfront distribution"
-  type        = string
-  default     = "cactify-website-content"
-}
 
-variable "s3_lambda_bucket_name" {
-  description = "S3 Bucket containing lambda function"
-  type        = string
-  default     = "cactify-lambda-bucket"
-}
 
 # Für den/die Tester*in dieser Software: Hier wird eine in Route53 registrierte Domain (florianjanssens.de) verwendet. 
 # Für Testzwecke muss eine eigene bei Route53 registrierte/verwaltete Domain verwendet werden. 
@@ -34,4 +24,21 @@ variable "test_email_for_ses" {
   type        = string
   description = "Verified SES Test Email for Sandbox Mode."
   default     = "contact@florianjanssens.de"
+}
+
+variable "s3_website_content_bucket_name" {
+  description = "S3 Bucket containing website contents, origin of cloudfront distribution"
+  type        = string
+  default     = "cactify-website-content"
+}
+
+variable "s3_lambda_bucket_name" {
+  description = "S3 Bucket containing lambda function"
+  type        = string
+  default     = "cactify-lambda-bucket"
+}
+variable "s3_failover_content_bucket_name" {
+  description = "S3 Bucket containing website contents, failover-origin of cloudfront distribution"
+  type        = string
+  default     = "cactify-failover-content"
 }

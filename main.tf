@@ -9,6 +9,17 @@ provider "aws" {
     }
   }
 }
+provider "aws" {
+  region = "eu-central-1"
+  alias  = "eu_central_1"
+
+  default_tags {
+    tags = {
+      Application = "Cactify-Website+Contact"
+      Environment = "failover"
+    }
+  }
+}
 
 # LOCALS
 locals {
@@ -202,7 +213,200 @@ resource "aws_s3_object" "android-chrome-512x512" {
 }
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+# ----------------------------------------------------------------
+# S3 FAILOVER Bucket 
+resource "aws_s3_bucket" "cactify-failover-content" {
+  provider = aws.eu_central_1
+  bucket   = format("cactify-failover-content-%s-eu-central-1", data.aws_caller_identity.current.account_id)
 
+  tags = {
+    Name = var.s3_failover_content_bucket_name
+  }
+}
+# S3 Failover Bucket Ownership Controls
+resource "aws_s3_bucket_ownership_controls" "cactify-failover-content" {
+  provider = aws.eu_central_1
+  bucket   = aws_s3_bucket.cactify-failover-content.id
+  rule {
+    object_ownership = "BucketOwnerPreferred"
+  }
+}
+# S3 Failover Bucket ACL (Access Controll Lists)
+resource "aws_s3_bucket_acl" "cactify-failover-content" {
+  provider   = aws.eu_central_1
+  depends_on = [aws_s3_bucket_ownership_controls.cactify-failover-content]
+
+  bucket = aws_s3_bucket.cactify-failover-content.id
+  acl    = "private"
+}
+# S3 Failover Bucket Versioning
+resource "aws_s3_bucket_versioning" "cactify-failover-content" {
+  provider = aws.eu_central_1
+  bucket   = aws_s3_bucket.cactify-failover-content.id
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+# S3 Cloudfront Failover Origin Bucket Policy
+resource "aws_s3_bucket_policy" "failover_origin_bucket_policy" {
+  provider = aws.eu_central_1
+  bucket   = aws_s3_bucket.cactify-failover-content.id
+  policy   = data.aws_iam_policy_document.failover_origin_bucket_policy.json
+}
+# Cloudfront Failover Origin Access Control
+resource "aws_cloudfront_origin_access_control" "failover" {
+  name                              = "failover-oac"
+  origin_access_control_origin_type = "s3"
+  signing_behavior                  = "always"
+  signing_protocol                  = "sigv4"
+}
+# S3 IAM Bucket-Policy (Cloudfront Access)
+data "aws_iam_policy_document" "failover_origin_bucket_policy" {
+  statement {
+    sid    = "AllowCloudFrontServicePrincipal"
+    effect = "Allow"
+
+    principals {
+      type        = "Service"
+      identifiers = ["cloudfront.amazonaws.com"]
+    }
+
+    actions = [
+      "s3:GetObject",
+    ]
+
+    resources = [
+      "${aws_s3_bucket.cactify-failover-content.arn}/*",
+    ]
+
+    condition {
+      test     = "StringEquals"
+      variable = "AWS:SourceArn"
+      values   = [aws_cloudfront_distribution.cactify_distribution.arn]
+    }
+  }
+}
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+# Adding Website-Contents to S3-cactify-failover-content-Bucket
+#Index.html
+resource "aws_s3_object" "index_failover" {
+  provider     = aws.eu_central_1
+  bucket       = aws_s3_bucket.cactify-failover-content.bucket
+  key          = "index.html"
+  source       = "./src/index.html"
+  etag         = filemd5("./src/index.html")
+  content_type = "text/html"
+}
+#Index.html
+resource "aws_s3_object" "datenschutzhinweise_failover" {
+  provider     = aws.eu_central_1
+  bucket       = aws_s3_bucket.cactify-failover-content.bucket
+  key          = "datenschutzhinweise.html"
+  source       = "./src/datenschutzhinweise.html"
+  etag         = filemd5("./src/datenschutzhinweise.html")
+  content_type = "text/html"
+}
+# Download_Button_V1_green.svg
+resource "aws_s3_object" "Download_Button_failover" {
+  provider     = aws.eu_central_1
+  bucket       = aws_s3_bucket.cactify-failover-content.bucket
+  key          = "Download_Button_V1_green.svg"
+  source       = "./src/Download_Button_V1_green.svg"
+  etag         = filemd5("./src/Download_Button_V1_green.svg")
+  content_type = "image/svg+xml"
+}
+# Kaktus_V1.svg
+resource "aws_s3_object" "Kaktus_failover" {
+  provider     = aws.eu_central_1
+  bucket       = aws_s3_bucket.cactify-failover-content.bucket
+  key          = "Kaktus_V1.svg"
+  source       = "./src/Kaktus_V1.svg"
+  etag         = filemd5("./src/Kaktus_V1.svg")
+  content_type = "image/svg+xml"
+}
+# Error 403
+resource "aws_s3_object" "custom_403_failover" {
+  provider     = aws.eu_central_1
+  bucket       = aws_s3_bucket.cactify-failover-content.bucket
+  key          = "403.html"
+  source       = "./src/403.html"
+  etag         = filemd5("./src/403.html")
+  content_type = "text/html"
+}
+# Error 404
+resource "aws_s3_object" "custom_404_failover" {
+  provider     = aws.eu_central_1
+  bucket       = aws_s3_bucket.cactify-failover-content.bucket
+  key          = "404.html"
+  source       = "./src/404.html"
+  etag         = filemd5("./src/404.html")
+  content_type = "text/html"
+}
+# favicon.ico
+resource "aws_s3_object" "favicon_failover" {
+  provider     = aws.eu_central_1
+  bucket       = aws_s3_bucket.cactify-failover-content.bucket
+  key          = "favicon.ico"
+  source       = "./src/favicon.ico"
+  etag         = filemd5("./src/favicon.ico")
+  content_type = "image/x-icon"
+}
+# favicon-16x16
+resource "aws_s3_object" "favicon-16x16_failover" {
+  provider     = aws.eu_central_1
+  bucket       = aws_s3_bucket.cactify-failover-content.bucket
+  key          = "favicon-16x16.png"
+  source       = "./src/favicon-16x16.png"
+  etag         = filemd5("./src/favicon-16x16.png")
+  content_type = "image/png"
+}
+# favicon-32x32
+resource "aws_s3_object" "favicon-32x32_failover" {
+  provider     = aws.eu_central_1
+  bucket       = aws_s3_bucket.cactify-failover-content.bucket
+  key          = "favicon-32x32.png"
+  source       = "./src/favicon-32x32.png"
+  etag         = filemd5("./src/favicon-32x32.png")
+  content_type = "image/png"
+}
+# site.webmanifest
+resource "aws_s3_object" "site_webmanifest_failover" {
+  provider     = aws.eu_central_1
+  bucket       = aws_s3_bucket.cactify-failover-content.bucket
+  key          = "site.webmanifest"
+  source       = "./src/site.webmanifest"
+  etag         = filemd5("./src/site.webmanifest")
+  content_type = "application/json"
+}
+# apple-touch-icon
+resource "aws_s3_object" "apple-touch-icon_failover" {
+  provider     = aws.eu_central_1
+  bucket       = aws_s3_bucket.cactify-failover-content.bucket
+  key          = "apple-touch-icon.png"
+  source       = "./src/apple-touch-icon.png"
+  etag         = filemd5("./src/apple-touch-icon.png")
+  content_type = "image/png"
+}
+# android-chrome-192x192
+resource "aws_s3_object" "android-chrome-192x192_failover" {
+  provider     = aws.eu_central_1
+  bucket       = aws_s3_bucket.cactify-failover-content.bucket
+  key          = "android-chrome-192x192.png"
+  source       = "./src/android-chrome-192x192.png"
+  etag         = filemd5("./src/android-chrome-192x192.png")
+  content_type = "image/png"
+}
+# android-chrome-512x512
+resource "aws_s3_object" "android-chrome-512x512_failover" {
+  provider     = aws.eu_central_1
+  bucket       = aws_s3_bucket.cactify-failover-content.bucket
+  key          = "android-chrome-512x512.png"
+  source       = "./src/android-chrome-512x512.png"
+  etag         = filemd5("./src/android-chrome-512x512.png")
+  content_type = "image/png"
+}
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 # ACM (Certificate Manager) + DNS-Validierung
 # ----------------------------------------------------------------
 resource "aws_acm_certificate" "cactify_cf" {
@@ -234,15 +438,36 @@ resource "aws_acm_certificate_validation" "cactify_cf" {
   validation_record_fqdns = [for record in aws_route53_record.acm_records : record.fqdn]
 }
 
+
+
 # ----------------------------------------------------------------
 # CLOUDFRONT DISTRIBUTION
 # ----------------------------------------------------------------
 resource "aws_cloudfront_distribution" "cactify_distribution" {
   # S3-Website-Contents-Origin
+
+  origin_group {
+    origin_id = "S3group"
+    failover_criteria {
+      status_codes = [403, 500, 502, 503, 504]
+    }
+    member {
+      origin_id = local.s3_origin_id
+    }
+    member {
+      origin_id = "failoverS3"
+    }
+  }
   origin {
     domain_name              = aws_s3_bucket.cactify-website-content.bucket_regional_domain_name
     origin_access_control_id = aws_cloudfront_origin_access_control.default.id
     origin_id                = local.s3_origin_id
+  }
+
+  origin {
+    domain_name              = aws_s3_bucket.cactify-failover-content.bucket_regional_domain_name
+    origin_access_control_id = aws_cloudfront_origin_access_control.failover.id
+    origin_id                = "failoverS3"
   }
 
   enabled             = true
@@ -253,9 +478,10 @@ resource "aws_cloudfront_distribution" "cactify_distribution" {
   aliases = ["${local.cactify_domain}", "www.${local.cactify_domain}"]
 
   default_cache_behavior {
-    allowed_methods  = ["GET", "HEAD", "OPTIONS"]
-    cached_methods   = ["GET", "HEAD"]
-    target_origin_id = local.s3_origin_id
+    allowed_methods = ["GET", "HEAD", "OPTIONS"]
+    cached_methods  = ["GET", "HEAD"]
+    #target_origin_id = local.s3_origin_id
+    target_origin_id = "S3group"
 
     forwarded_values {
       query_string = false
