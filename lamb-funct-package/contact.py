@@ -16,11 +16,12 @@ from email_validator import EmailNotValidError, validate_email
 SES = boto3.client("ses", region_name="us-east-1")
 
 # create Logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-)
-
+# logging.basicConfig(
+#     level=logging.INFO,
+#     format="%(asctime)s [%(levelname)s] %(message)s",
+# )
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 # Für den/die Tester*in dieser Software:
 # Bitte ändern Sie hier die MAIN_DOMAIN, wie in variables.tf, zu einer von Ihnen bei Route 53 registrierten Domain.
@@ -33,12 +34,12 @@ NO_REPLY = f"no-reply@{SUBDOMAIN}.{MAIN_DOMAIN}"
 
 def lambda_handler(event, context):
     """Process the contact form request and return an API response."""
-    logging.info(f"START of Lambda_Handler")
+    logger.info(f"START of Lambda_Handler")
     # logging.info(event)
     # Get data from event
     data = parse_json_and_validate(event=event)
     if not data:
-        logging.info(f"400 | Form is not complete.")
+        logger.info(f"400 | Form is not complete.")
         return {
             "statusCode": 400,
             "headers": {"Content-Type": "application/json"},
@@ -46,7 +47,7 @@ def lambda_handler(event, context):
         }
     # validate email
     if not is_valid_email(email=data.get("email")):
-        logging.info(f"400 | Email is not valid.")
+        logger.info(f"400 | Email is not valid.")
         return {
             "statusCode": 400,
             "headers": {"Content-Type": "application/json"},
@@ -55,7 +56,7 @@ def lambda_handler(event, context):
     # sending emails
     code = send_emails(data=data)
     if code == 0:
-        logging.info(f"SUCCESS of Lambda_Handler - Returning with 200.")
+        logger.info(f"SUCCESS of Lambda_Handler - Returning with 200.")
         return {
             "statusCode": 200,
             "headers": {"Content-Type": "application/json"},
@@ -66,14 +67,14 @@ def lambda_handler(event, context):
             ),
         }
     elif code == 1:
-        logging.info(f"500 | Sending message failed.")
+        logger.info(f"500 | Sending message failed.")
         return {
             "statusCode": 500,
             "headers": {"Content-Type": "application/json"},
             "body": json.dumps({"error": f"Sending your message failed."}),
         }
     else:
-        logging.info(f"500 | Sending confirmation message failed.")
+        logger.info(f"500 | Sending confirmation message failed.")
         return {
             "statusCode": 500,
             "headers": {"Content-Type": "application/json"},
@@ -88,28 +89,28 @@ def lambda_handler(event, context):
 def parse_json_and_validate(event) -> dict:
     """Extract contact form fields from the event-object"""
     body = event.get("body")
-    logging.debug(f"Extracted body from event: {body}")
+    logger.debug(f"Extracted body from event: {body}")
     if not body:
-        logging.warning(f"Could not extract body from event.")
+        logger.warning(f"Could not extract body from event.")
         return {}
 
     try:
         data = json.loads(body)
-        logging.debug(f"Extracted data from body: {data}")
+        logger.debug(f"Extracted data from body: {data}")
     except json.JSONDecodeError as e:
-        logging.error(f"JSONDecodeError: {e}")
+        logger.error(f"JSONDecodeError: {e}")
         return {}
 
     email = (data.get("email") or "").strip()
     first_name = (data.get("first_name") or "").strip()
     last_name = (data.get("last_name") or "").strip()
     message = (data.get("message") or "").strip()
-    logging.debug(
+    logger.debug(
         f"Extracted values from data: email={email}, first_name={first_name}, last_name={last_name}, message={message}"
     )
 
     if any(not value for value in [email, first_name, last_name, message]):
-        logging.info(f"Any value was empty.")
+        logger.info(f"Any value was empty.")
         return {}
 
     return {
@@ -124,10 +125,10 @@ def is_valid_email(email) -> bool:
     """Validate the given user-email-address"""
     try:
         validate_email(email, check_deliverability=True)
-        logging.info(f"Email-Validation success.")
+        logger.info(f"Email-Validation success.")
         return True
     except EmailNotValidError:
-        logging.info(f"EmailNotValidError: {email}")
+        logger.info(f"EmailNotValidError: {email}")
         return False
 
 
@@ -142,7 +143,7 @@ def send_emails(data: dict):
 
     try:
         # service-team email
-        logging.debug(f"Trying to send Email to service")
+        logger.debug(f"Trying to send Email to service")
         SES.send_email(
             Source=NO_REPLY,
             Destination={"ToAddresses": [f"service@{MAIN_DOMAIN}"]},
@@ -153,13 +154,13 @@ def send_emails(data: dict):
             ConfigurationSetName="my-cactify-config-set",
         )
     except ClientError as e:
-        logging.error(
+        logger.error(
             f"AWS ClientError sending to service: {e.response['Error']['Message']}"
         )
         return 1
     try:
         # user confirmation email
-        logging.debug(f"Trying to send Email to user")
+        logger.debug(f"Trying to send Email to user")
         SES.send_email(
             Source=NO_REPLY,
             Destination={"ToAddresses": [str(data.get("email"))]},
@@ -169,10 +170,10 @@ def send_emails(data: dict):
             },
             ConfigurationSetName="my-cactify-config-set",
         )
-        logging.info(f"Emails sent succesfully")
+        logger.info(f"Emails sent succesfully")
         return 0
     except ClientError as e:
-        logging.error(
+        logger.error(
             f"AWS ClientError sending User-Confirmation-Email: {e.response['Error']['Message']}"
         )
         return 2

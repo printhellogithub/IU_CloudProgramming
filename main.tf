@@ -524,26 +524,15 @@ resource "aws_cloudfront_distribution" "cactify_distribution" {
   aliases = ["${local.cactify_domain}", "www.${local.cactify_domain}"]
 
   default_cache_behavior {
+    cache_policy_id = "658327ea-f89d-4fab-a63d-7e88639e58f6"
     allowed_methods = ["GET", "HEAD", "OPTIONS"]
     cached_methods  = ["GET", "HEAD"]
-    #target_origin_id = local.s3_origin_id
     target_origin_id = "S3group"
 
-    forwarded_values {
-      query_string = false
-
-      cookies {
-        forward = "none"
-      }
-    }
-
     viewer_protocol_policy = "redirect-to-https"
-    min_ttl                = 0
-    default_ttl            = 3600
-    max_ttl                = 86400
   }
 
-  # price_class_100 ist nicht weltweit: Nur United States, Mexico, and Canada, Europe, Israel, and Türkiye
+  # price_class_100 ist nicht weltweit: Nur United States, Mexico, and Canada, Europa, Israel, and Türkei.
   # Für eine weltweite Abdeckung wäre "PriceClass_All" erforderlich. 
   # Diese Einstellung wurde zum Schutz des Studenten im Rahmen des Projektes auf "PriceClass_100" gestellt.
   price_class = "PriceClass_100"
@@ -773,15 +762,16 @@ resource "aws_s3_bucket" "lambda_bucket" {
 resource "aws_s3_bucket_ownership_controls" "lambda_bucket" {
   bucket = aws_s3_bucket.lambda_bucket.id
   rule {
-    object_ownership = "BucketOwnerPreferred"
+    object_ownership = "BucketOwnerEnforced"
   }
 }
-
-resource "aws_s3_bucket_acl" "lambda_bucket" {
-  depends_on = [aws_s3_bucket_ownership_controls.lambda_bucket]
-
+resource "aws_s3_bucket_public_access_block" "lambda_bucket" {
   bucket = aws_s3_bucket.lambda_bucket.id
-  acl    = "private"
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
 }
 
 # Package the Lambda function code
