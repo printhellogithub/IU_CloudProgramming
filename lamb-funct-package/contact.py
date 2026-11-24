@@ -152,6 +152,10 @@ def send_emails(data: dict):
                 "Body": {"Text": {"Data": f"{service_message}"}},
             },
             ConfigurationSetName="my-cactify-config-set",
+            Tags=[
+                {"Name": "Application", "Value": "Cactify"},
+                {"Name": "EmailType", "Value": "Contact"},
+            ],
         )
     except ClientError as e:
         logger.error(
@@ -169,6 +173,10 @@ def send_emails(data: dict):
                 "Body": {"Text": {"Data": f"{user_message}"}},
             },
             ConfigurationSetName="my-cactify-config-set",
+            Tags=[
+                {"Name": "Application", "Value": "Cactify"},
+                {"Name": "EmailType", "Value": "Contact"},
+            ],
         )
         logger.info(f"Emails sent succesfully")
         return 0

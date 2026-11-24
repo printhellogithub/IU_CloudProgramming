@@ -914,14 +914,14 @@ resource "aws_sesv2_configuration_set_event_destination" "main" {
   event_destination {
     cloud_watch_destination {
       dimension_configuration {
-        dimension_name          = "EventType"
+        dimension_name          = "EmailType"
         default_dimension_value = "Unknown"
         dimension_value_source  = "MESSAGE_TAG"
       }
       dimension_configuration {
-        dimension_name          = "RecipientDomain"
-        default_dimension_value = "Internal"
-        dimension_value_source  = "EMAIL_HEADER"
+        dimension_name          = "Application"
+        default_dimension_value = "Unknown"
+        dimension_value_source  = "MESSAGE_TAG"
       }
     }
 
