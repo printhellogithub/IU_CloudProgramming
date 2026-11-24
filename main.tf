@@ -524,9 +524,9 @@ resource "aws_cloudfront_distribution" "cactify_distribution" {
   aliases = ["${local.cactify_domain}", "www.${local.cactify_domain}"]
 
   default_cache_behavior {
-    cache_policy_id = "658327ea-f89d-4fab-a63d-7e88639e58f6"
-    allowed_methods = ["GET", "HEAD", "OPTIONS"]
-    cached_methods  = ["GET", "HEAD"]
+    cache_policy_id  = "658327ea-f89d-4fab-a63d-7e88639e58f6"
+    allowed_methods  = ["GET", "HEAD", "OPTIONS"]
+    cached_methods   = ["GET", "HEAD"]
     target_origin_id = "S3group"
 
     viewer_protocol_policy = "redirect-to-https"
