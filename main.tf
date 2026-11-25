@@ -819,7 +819,7 @@ resource "aws_lambda_function" "contact" {
 resource "aws_cloudwatch_log_group" "contact" {
   name = "/aws/lambda/${aws_lambda_function.contact.function_name}"
 
-  # Retention für Produktion eher 30 Tage. Um auf jeden Fall im Free Tier zu bleiben - hier 7 Tage.
+  # Retention für Produktion 30 Tage. Um auf jeden Fall im Free Tier zu bleiben - hier 7 Tage.
   retention_in_days = 7
 }
 
